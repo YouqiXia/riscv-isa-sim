@@ -62,6 +62,12 @@ static void commit_log_print_value(FILE *log_file, int width, uint64_t val)
 
 static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
 {
+// rivai beg
+  if (p->get_log_commits_enabled()) {
+      if (commitHook())
+        return;
+  }
+// rivai end
   FILE *log_file = p->get_log_file();
 
   auto& reg = p->get_state()->log_reg_write;
@@ -71,14 +77,19 @@ static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
   int xlen = p->get_state()->last_inst_xlen;
   int flen = p->get_state()->last_inst_flen;
 
-  // print core id on all lines so it is easy to grep
-  fprintf(log_file, "core%4" PRId32 ": ", p->get_id());
+  if (p->get_log_commits_stant_enabled()) {
+    fprintf(log_file, "PC=0x%08lx", pc);
+    fprintf(log_file, ", opcode=0x%08lx", insn.bits());
+  } else {
+    // print core id on all lines so it is easy to grep
+    fprintf(log_file, "core%4" PRId32 ": ", p->get_id());
 
-  fprintf(log_file, "%1d ", priv);
-  commit_log_print_value(log_file, xlen, pc);
-  fprintf(log_file, " (");
-  commit_log_print_value(log_file, insn.length() * 8, insn.bits());
-  fprintf(log_file, ")");
+    fprintf(log_file, "%1d ", priv);
+    commit_log_print_value(log_file, xlen, pc);
+    fprintf(log_file, " (");
+    commit_log_print_value(log_file, insn.length() * 8, insn.bits());
+    fprintf(log_file, ")");
+  }
   bool show_vec = false;
 
   for (auto item : reg) {
@@ -87,6 +98,9 @@ static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
 
     char prefix = ' ';
     int size;
+    // rivai beg
+    size = 0;
+    // rivai end
     int rd = item.first >> 4;
     bool is_vec = false;
     bool is_vreg = false;
@@ -117,36 +131,56 @@ static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
     }
 
     if (!show_vec && (is_vreg || is_vec)) {
-        fprintf(log_file, " e%ld %s%ld l%ld",
-                (long)p->VU.vsew,
-                p->VU.vflmul < 1 ? "mf" : "m",
-                p->VU.vflmul < 1 ? (long)(1 / p->VU.vflmul) : (long)p->VU.vflmul,
-                (long)p->VU.vl->read());
+        if (!p->get_log_commits_stant_enabled()) {
+          fprintf(log_file, " e%ld %s%ld l%ld",
+                  (long)p->VU.vsew,
+                  p->VU.vflmul < 1 ? "mf" : "m",
+                  p->VU.vflmul < 1 ? (long)(1 / p->VU.vflmul) : (long)p->VU.vflmul,
+                  (long)p->VU.vl->read());
+        }
         show_vec = true;
     }
 
     if (!is_vec) {
-      if (prefix == 'c')
-        fprintf(log_file, " c%d_%s ", rd, csr_name(rd));
-      else
-        fprintf(log_file, " %c%-2d ", prefix, rd);
-      if (is_vreg)
-        commit_log_print_value(log_file, size, &p->VU.elt<uint8_t>(rd, 0));
-      else
-        commit_log_print_value(log_file, size, item.second.v);
+      if (!p->get_log_commits_stant_enabled()) {
+        if (prefix == 'c')
+          fprintf(log_file, " c%d_%s ", rd, csr_name(rd));
+        else
+          fprintf(log_file, " %c%-2d ", prefix, rd);
+        if (is_vreg)
+          commit_log_print_value(log_file, size, &p->VU.elt<uint8_t>(rd, 0));
+        else
+          commit_log_print_value(log_file, size, item.second.v);
+      }
     }
   }
 
   for (auto item : load) {
-    fprintf(log_file, " mem ");
-    commit_log_print_value(log_file, xlen, std::get<0>(item));
+    if (p->get_log_commits_stant_enabled()) {
+      fprintf(log_file, ", VA=0x%08lx", std::get<3>(item));
+    } else {
+      fprintf(log_file, " mem ");
+      commit_log_print_value(log_file, xlen, std::get<0>(item));
+// rivai beg
+      fprintf(log_file, " ");
+      commit_log_print_value(log_file, xlen, std::get<3>(item));
+// rivai end
+    }
   }
 
   for (auto item : store) {
-    fprintf(log_file, " mem ");
-    commit_log_print_value(log_file, xlen, std::get<0>(item));
-    fprintf(log_file, " ");
-    commit_log_print_value(log_file, std::get<2>(item) << 3, std::get<1>(item));
+    if (p->get_log_commits_stant_enabled()) {
+      fprintf(log_file, ", VA=0x%08lx", std::get<3>(item));
+    } else {
+      fprintf(log_file, " mem ");
+      commit_log_print_value(log_file, xlen, std::get<0>(item));
+      fprintf(log_file, " ");
+      commit_log_print_value(log_file, std::get<2>(item) << 3, std::get<1>(item));
+// rivai beg
+      fprintf(log_file, " ");
+      commit_log_print_value(log_file, xlen, std::get<3>(item));
+// rivai end
+    }
   }
   fprintf(log_file, "\n");
 }
@@ -173,6 +207,13 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
 
   try {
     npc = fetch.func(p, fetch.insn, pc);
+// rivai beg
+    if (p != nullptr) {
+      if (p->get_log_commits_enabled()) {
+        decodeHook(&fetch, pc, npc);
+      }
+    }
+// rivai end
     if (npc != PC_SERIALIZE_BEFORE) {
       if (p->get_log_commits_enabled()) {
         commit_log_print_insn(p, pc, fetch.insn);
@@ -204,7 +245,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
 
 bool processor_t::slow_path()
 {
-  return debug || state.single_step != state.STEP_NONE || state.debug_mode ||
+  return debug || state.single_step != state.STEP_NONE || state.debug_mode || log_commits_stant_enabled ||
          log_commits_enabled || histogram_enabled || in_wfi || check_triggers_icount;
 }
 
@@ -284,8 +325,20 @@ void processor_t::step(size_t n)
           insn_fetch_t fetch = mmu->load_insn(pc);
           if (debug && !state.serialized)
             disasm(fetch.insn);
+// rivai beg
+          //// RiVAI: simpoint add --YC
+          if (this->simpoint_module) {
+            this->simpoint_module->simpoint_step(1);
+          }
+          //// RiVAI: simpoint add end --YC
+// rivai end
           pc = execute_insn_logged(this, pc, fetch);
           advance_pc();
+// rivai beg
+          if (get_log_commits_enabled()) {
+            state.pc = getNpcHook(pc);
+          }
+// rivai end
 
           // Resume from debug mode in critical error
           if (state.critical_error && !state.debug_mode) {
@@ -303,6 +356,13 @@ void processor_t::step(size_t n)
       {
         // Main simulation loop, fast path.
         for (auto ic_entry = _mmu->access_icache(pc); ; ) {
+// rivai beg
+          //// RiVAI: simpoint add --YC
+          if (this->simpoint_module) {
+            this->simpoint_module->simpoint_step(1);
+          }
+          //// RiVAI: simpoint add end --YC
+// rivai end
           auto fetch = ic_entry->data;
           pc = execute_insn_fast(this, pc, fetch);
           ic_entry = ic_entry->next;
@@ -343,6 +403,9 @@ void processor_t::step(size_t n)
     }
     catch (triggers::matched_t& t)
     {
+      // rivai beg
+      n = instret;
+      // rivai end
       if (mmu->matched_trigger) {
         delete mmu->matched_trigger;
         mmu->matched_trigger = NULL;
@@ -361,8 +424,18 @@ void processor_t::step(size_t n)
       // In the debug ROM this prevents us from wasting time looping, but also
       // allows us to switch to other threads only once per idle loop in case
       // there is activity.
+// rivai beg
+      bool keep_going = true;
+      if (get_log_commits_enabled()) {
+        keep_going = continueHook();
+      }
+// rivai end
       n = ++instret;
-      in_wfi = true;
+// rivai beg
+      if (keep_going) {
+        in_wfi = true;
+      }
+// rivai end
     }
 
     if (!(state.mcountinhibit->read() & MCOUNTINHIBIT_IR))

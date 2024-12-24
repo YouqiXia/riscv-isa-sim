@@ -9,6 +9,9 @@
 #include "log_file.h"
 #include "processor.h"
 #include "simif.h"
+//// RiVAI: simpoint add --YC
+#include "../patch/simpoint_module.h"
+//// RiVAI: simpoint add end --YC
 
 #include <fesvr/htif.h>
 #include <vector>
@@ -16,6 +19,13 @@
 #include <string>
 #include <memory>
 #include <sys/types.h>
+
+// code extension beg
+enum MultiProcErr : int8_t {
+  NO_ERR = 0,
+  WAIT_TICK = 1,
+};
+// code extension end
 
 class mmu_t;
 class remote_bitbang_t;
@@ -27,6 +37,7 @@ using device_factory_sargs_t = std::pair<const device_factory_t*, std::vector<st
 // this class encapsulates the processors and memory in a RISC-V machine.
 class sim_t : public htif_t, public simif_t
 {
+  friend class SimExtension;
 public:
   sim_t(const cfg_t *cfg, bool halted,
         std::vector<std::pair<reg_t, abstract_mem_t*>> mems,
@@ -49,6 +60,7 @@ public:
   // If enable_log is true, an instruction trace will be generated. If
   // enable_commitlog is true, so will the commit results
   void configure_log(bool enable_log, bool enable_commitlog);
+  void configure_log(bool enable_log, bool enable_commitlog, bool enable_commitlog_stant);
 
   void set_procs_debug(bool value);
   void set_remote_bitbang(remote_bitbang_t* remote_bitbang) {
@@ -64,10 +76,54 @@ public:
   // Callback for processors to let the simulation know they were reset.
   virtual void proc_reset(unsigned id) override;
 
-  static const size_t INTERLEAVE = 5000;
+  static const size_t INTERLEAVE = 1; // rivai: Inorder to pass model rob replay, INTERLEAVE=1 is needed, but then it can not run 602.gcc_s.elf. todo: find out the reason.
   static const size_t INSNS_PER_RTC_TICK = 100; // 10 MHz clock for 1 BIPS core
   static const size_t CPU_HZ = 1000000000; // 1GHz CPU
-
+  //// RiVAI: simpoint add --YC
+  // FIXME: Putting function definition in sim.cc file will cause linking error
+  void set_simpoint_module(const simpoint_module_config_t &sm_config) {
+    uint64_t tohost_addr = 0;
+    uint64_t fromhost_addr = 0;
+    if (sm_config.snapshot_load_name) {
+      // If the emulator loads a checkpoint, try to extract the symbols needed
+      // for htif from elf, if provided
+      try {
+        std::vector<std::string> targets = get_targets();
+        std::string elf_name = targets.at(1);
+        addr_t entry = 0;
+        std::map<std::string, uint64_t> symbols =
+            load_payload(elf_name, &entry, 0);
+        if (symbols.count("tohost") && symbols.count("fromhost")) {
+          tohost_addr = symbols["tohost"];
+          fromhost_addr = symbols["fromhost"];
+          set_tohost_addr(tohost_addr);
+          set_fromhost_addr(fromhost_addr);
+        } else {
+          std::cerr << "warning: tohost and fromhost symbols not in ELF; can't "
+                       "communicate with target\n"
+                    << std::endl;
+        }
+        // Delete the target in targets, such as pk, because it has been
+        // replaced by "None" to avoid repeated loading when restoring
+        // checkpoints
+        targets.erase(targets.begin() + 1);
+        set_targets(targets);
+      } catch (const std::out_of_range &e) {
+        std::cerr << "warning: ELF is not provided, the tohost and formhost "
+                     "symbols cannot be obtained, and the htif communication "
+                     "with the target cannot be used"
+                  << std::endl;
+      }
+    }
+    simpoint_module = std::make_unique<simpoint_module_t>(
+        sm_config, this, &bus, clint.get(), get_syscall(), dtb);
+    processor_t *proc = get_core(0);
+    proc->set_simpoint_module(simpoint_module.get());
+  };
+  simpoint_module_t *get_simpoint_module() { return simpoint_module.get(); }
+  //// RiVAI: simpoint add end --YC
+void interactive_reg(const std::string& cmd, const std::vector<std::string>& args);
+virtual void idle() override;
 private:
   const cfg_t * const cfg;
   std::vector<std::pair<reg_t, abstract_mem_t*>> mems;
@@ -88,6 +144,9 @@ private:
   socketif_t *socketif;
   std::ostream sout_; // used for socket and terminal interface
 
+  // merge from p600v2 --ZQ
+  void exit_handler();
+  // merge from p600v2 end --ZQ
   processor_t* get_core(const std::string& i);
   void step(size_t n); // step through simulation
   size_t current_step;
@@ -98,6 +157,9 @@ private:
   remote_bitbang_t* remote_bitbang;
   std::optional<std::function<void()>> next_interactive_action;
 
+  //// RiVAI: simpoint add --YC
+  std::unique_ptr<simpoint_module_t> simpoint_module;
+  //// RiVAI: simpoint add end --YC
   // memory-mapped I/O routines
   virtual char* addr_to_mem(reg_t paddr) override;
   virtual bool mmio_load(reg_t paddr, size_t len, uint8_t* bytes) override;
@@ -116,7 +178,6 @@ private:
   void interactive_run_noisy(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_run_silent(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_vreg(const std::string& cmd, const std::vector<std::string>& args);
-  void interactive_reg(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_freg(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_fregh(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_fregs(const std::string& cmd, const std::vector<std::string>& args);
@@ -132,6 +193,9 @@ private:
   void interactive_until(const std::string& cmd, const std::vector<std::string>& args, bool noisy);
   void interactive_until_silent(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_until_noisy(const std::string& cmd, const std::vector<std::string>& args);
+  // code extension beg
+  void interactive_extension(const std::string& cmd, const std::vector<std::string>& args);
+  // code extension end
   reg_t get_reg(const std::vector<std::string>& args);
   freg_t get_freg(const std::vector<std::string>& args, int size);
   reg_t get_mem(const std::vector<std::string>& args);
@@ -143,7 +207,6 @@ private:
 
   // htif
   virtual void reset() override;
-  virtual void idle() override;
   virtual void read_chunk(addr_t taddr, size_t len, void* dst) override;
   virtual void write_chunk(addr_t taddr, size_t len, const void* src) override;
   virtual size_t chunk_align() override { return 8; }
@@ -155,6 +218,20 @@ public:
   // enumerate processors, which segfaults if procs hasn't been initialized
   // yet.
   debug_module_t debug_module;
+
+  // code extension beg
+  void set_current_proc(size_t proc);
+  struct {
+    std::vector<size_t> proc_current_steps;
+    std::vector<MultiProcErr> proc_errs;
+    size_t steps_sum = 0;
+  } multi_proc_data;
+
+  void enable_specify_proc(bool val);
+  MultiProcErr proc_err(size_t id) const;
+  size_t nprocs() const { return procs.size(); }
+  char* sd_addr2Mem(reg_t paddr) { return addr_to_mem(paddr); }
+  // code extension end
 };
 
 extern volatile bool ctrlc_pressed;

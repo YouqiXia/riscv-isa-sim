@@ -20,6 +20,13 @@ class fds_t
   reg_t alloc(int fd);
   void dealloc(reg_t fd);
   int lookup(reg_t fd);
+// rivai beg
+  //// RiVAI: simpoint add --YC
+  std::vector<int> &get_fds_vector() {
+    return fds;
+  } // Not elegant but useful for simpoint
+    //// RiVAI: simpoint add end --YC
+// rivai end
  private:
   std::vector<int> fds;
 };
@@ -31,7 +38,11 @@ class syscall_t : public device_t
   ~syscall_t();
 
   void set_chroot(const char* where);
-  
+// rivai beg
+  //// RiVAI: simpoint add --YC
+  fds_t &get_fds() { return fds; }
+  //// RiVAI: simpoint add end --YC
+// rivai end
  private:
   const char* identity() { return "syscall_proxy"; }
 

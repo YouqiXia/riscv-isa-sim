@@ -21,6 +21,23 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
+#include "endflag.h"
+#include "easy_args.h"
+
+/**
+ * @brief code ext: For some self-defined processing.
+ * 
+ */
+class SimExtension {
+public:
+  static void replace_isa(const char *dtb_file, const char **dtb_isa_ptr, const cfg_t* cfg) {
+    if (dtb_file != nullptr and cfg->explicit_isa) {
+      std::cout << "***Warnning*** Replace dtb isa: [" << *dtb_isa_ptr << "] by command line isa: [" << cfg->isa << "]" << std::endl;
+      *dtb_isa_ptr = cfg->isa;
+    }
+  }
+};
+
 volatile bool ctrlc_pressed = false;
 static void handle_signal(int sig)
 {
@@ -35,6 +52,9 @@ const size_t sim_t::INTERLEAVE;
 extern device_factory_t* clint_factory;
 extern device_factory_t* plic_factory;
 extern device_factory_t* ns16550_factory;
+// rivai beg
+extern device_factory_t* uart_z1_factory;
+// rivai end
 
 sim_t::sim_t(const cfg_t *cfg, bool halted,
              std::vector<std::pair<reg_t, abstract_mem_t*>> mems,
@@ -58,6 +78,9 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
     histogram_enabled(false),
     log(false),
     remote_bitbang(NULL),
+// rivai beg
+    simpoint_module(nullptr),
+// rivai end
     debug_module(this, dm_config)
 {
   signal(SIGINT, &handle_signal);
@@ -118,7 +141,8 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
   std::vector<device_factory_sargs_t> device_factories = {
     {clint_factory, {}}, // clint must be element 0
     {plic_factory, {}}, // plic must be element 1
-    {ns16550_factory, {}}};
+    {ns16550_factory, {}},
+    {uart_z1_factory, {}}};
   device_factories.insert(device_factories.end(),
                           plugin_device_factories.begin(),
                           plugin_device_factories.end());
@@ -133,7 +157,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
     std::stringstream strstream;
     strstream << fin.rdbuf();
     dtb = strstream.str();
-    dts = dtb_to_dts(dtb);
+    //dts = dtb_to_dts(dtb);
   } else {
     std::pair<reg_t, reg_t> initrd_bounds = cfg->initrd_bounds;
     std::string device_nodes;
@@ -186,6 +210,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
       std::cerr << "core (" << cpu_idx << ") has an invalid or missing 'riscv,isa'\n";
       exit(1);
     }
+    SimExtension::replace_isa(dtb_file, &isa_str, cfg);
 
     // handle hartid
     uint32_t hartid;
@@ -260,11 +285,32 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
 sim_t::~sim_t()
 {
+  sout_ << CONNECT_ENDFLAG;
+  sout_.flush();
   for (size_t i = 0; i < procs.size(); i++)
     delete procs[i];
   delete debug_mmu;
+  for (auto &mem : mems) {
+    delete mem.second;
+  }
 }
 
+// merge from p600v2 --ZQ
+void sim_t::exit_handler() {
+  sout_ << CONNECT_ENDFLAG;
+  sout_.flush();
+  for (size_t i = 0; i < nprocs(); i++) {
+    processor_t *p = get_core(i);
+    //// RiVAI: simpoint add --YC
+    if (simpoint_module) {
+      simpoint_module->simpoint_exit();
+    }
+    //// RiVAI: simpoint add end --YC
+    printf("core%u total instructions : %lu\n", p->get_id(),
+           p->get_state()->minstret->read());
+  }
+}
+// merge from p600v2 end --ZQ
 int sim_t::run()
 {
   if (!debug && log)
@@ -274,25 +320,76 @@ int sim_t::run()
 
   // htif_t::run() will repeatedly call back into sim_t::idle(), each
   // invocation of which will advance target time
-  return htif_t::run();
+  // merge from p600v2 --ZQ
+  int rv = htif_t::run();
+  exit_handler();
+  return rv;
+  // merge from p600v2 end --ZQ
 }
 
 void sim_t::step(size_t n)
 {
+  // code extension beg
+  if (g_easy_args.specify_proc) {
+    if (multi_proc_data.proc_current_steps.empty()) {
+      multi_proc_data.proc_current_steps.resize(procs.size(), 0);
+      multi_proc_data.proc_errs.resize(procs.size(), NO_ERR);
+    }
+    multi_proc_data.proc_errs[current_proc] = NO_ERR;
+    current_step = multi_proc_data.proc_current_steps[current_proc];
+    if (current_step >= INTERLEAVE) {
+      multi_proc_data.proc_errs[current_proc] = WAIT_TICK;
+      return;
+    }
+  }
+  // code extension end
   for (size_t i = 0, steps = 0; i < n; i += steps)
   {
     steps = std::min(n - i, INTERLEAVE - current_step);
     procs[current_proc]->step(steps);
 
     current_step += steps;
+    // code extension beg
+    if (g_easy_args.specify_proc) {
+      multi_proc_data.proc_current_steps[current_proc] = current_step;
+      multi_proc_data.steps_sum += steps;
+      if (current_step == INTERLEAVE) {
+        // procs[current_proc]->get_mmu()->yield_load_reservation();
+      }
+      if (multi_proc_data.steps_sum == procs.size() * INTERLEAVE) {
+        for (auto &step_num : multi_proc_data.proc_current_steps) {
+          step_num = 0;
+        }
+        multi_proc_data.steps_sum = 0;
+        reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
+        bool keep_going = true;
+        if (procs[current_proc]->get_log_commits_enabled()) {
+          keep_going = continueHook();
+        }
+        if (keep_going) {
+          for (auto &dev : devices) dev->tick(rtc_ticks);
+        }
+
+        current_step = 0;
+        continue;
+      }
+      break;
+    }
+    // code extension end
     if (current_step == INTERLEAVE)
     {
       current_step = 0;
-      procs[current_proc]->get_mmu()->yield_load_reservation();
+      // procs[current_proc]->get_mmu()->yield_load_reservation();
       if (++current_proc == procs.size()) {
         current_proc = 0;
         reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
-        for (auto &dev : devices) dev->tick(rtc_ticks);
+        bool keep_going = true;
+        if (procs[current_proc]->get_log_commits_enabled()) {
+          keep_going = continueHook();
+        }
+        if (keep_going) {
+          for (auto &dev : devices) dev->tick(rtc_ticks);
+        }
       }
     }
   }
@@ -316,15 +413,20 @@ void sim_t::set_histogram(bool value)
   }
 }
 
-void sim_t::configure_log(bool enable_log, bool enable_commitlog)
+void sim_t::configure_log(bool enable_log, bool enable_commitlog, bool enable_commitlog_stant)
 {
   log = enable_log;
 
-  if (!enable_commitlog)
-    return;
+  if (enable_commitlog) {
+    for (processor_t *proc : procs) {
+      proc->enable_log_commits();
+    }
+  }
 
-  for (processor_t *proc : procs) {
-    proc->enable_log_commits();
+  if (enable_commitlog_stant) {
+    for (processor_t *proc : procs) {
+      proc->enable_log_commits_stant();
+    }
   }
 }
 
@@ -357,9 +459,10 @@ bool sim_t::mmio_store(reg_t paddr, size_t len, const uint8_t* bytes)
 void sim_t::set_rom()
 {
   const int reset_vec_size = 8;
-
-  reg_t start_pc = cfg->start_pc.value_or(get_entry_point());
-
+  // rivai beg
+  //reg_t start_pc = cfg->start_pc.value_or(get_entry_point());
+  reg_t start_pc = get_entry_point();
+  // rivai end
   uint32_t reset_vec[reset_vec_size] = {
     0x297,                                      // auipc  t0,0x0
     0x28593 + (reset_vec_size * 4 << 20),       // addi   a1, t0, &dtb
@@ -430,7 +533,7 @@ void sim_t::idle()
   if (debug || ctrlc_pressed)
     interactive();
   else
-    step(INTERLEAVE);
+    step(1);
 
   if (remote_bitbang)
     remote_bitbang->tick();
@@ -460,3 +563,20 @@ void sim_t::proc_reset(unsigned id)
 {
   debug_module.proc_reset(id);
 }
+
+// code extension beg
+void sim_t::set_current_proc(size_t proc) {
+  if (g_easy_args.specify_proc) {
+    current_proc = proc;
+  }
+}
+
+void sim_t::enable_specify_proc(bool val) { g_easy_args.specify_proc = val; }
+
+MultiProcErr sim_t::proc_err(size_t id) const {
+  if (id < multi_proc_data.proc_errs.size()) {
+    return multi_proc_data.proc_errs[id];
+  }
+  return NO_ERR;
+}
+// code extension end

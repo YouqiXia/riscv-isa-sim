@@ -21,6 +21,26 @@
 #include <cinttypes>
 #include <sstream>
 #include "../VERSION"
+// rivai beg
+//// RiVAI: simpoint add --YC
+#include "patch/simpoint_module.h"
+//// RiVAI: simpoint add end --YC
+#include "riscv/easy_args.h"
+#include "patch/endflag.h"
+void decodeHook(void*, uint64_t, uint64_t) {}
+bool commitHook(){ return false; }
+uint64_t getNpcHook(uint64_t npc) {return npc;}
+reg_t excptionHook(void *, uint64_t, trap_t &t) { return 0; }
+void catchDataBeforeWriteHook(uint64_t, uint64_t, uint32_t, std::shared_ptr<bool>) {}
+void catchDataBeforeCsrHook(int, uint64_t, std::shared_ptr<bool>) {}
+bool getCsrHook(int, reg_t) { return true; }
+bool continueHook() { return true; }
+bool exitHook(int) {
+  std::cerr << CONNECT_ENDFLAG;
+  std::cerr.flush();
+  return true;
+}
+// rivai end
 
 static void help(int exit_code = 1)
 {
@@ -56,6 +76,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "                          specify --device=<name>,<args> to pass down extra args.\n");
   fprintf(stderr, "  --log-cache-miss      Generate a log of cache miss\n");
   fprintf(stderr, "  --log-commits         Generate a log of commits info\n");
+  fprintf(stderr, "  --log-commits-stant   Generate a log of commits info suitable for stant utility\n");
   fprintf(stderr, "  --extension=<name>    Specify RoCC Extension\n");
   fprintf(stderr, "                          This flag can be used multiple times.\n");
   fprintf(stderr, "  --extlib=<name>       Shared library to load\n");
@@ -84,7 +105,41 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --dm-no-halt-groups   Debug module won't support halt groups\n");
   fprintf(stderr, "  --dm-no-impebreak     Debug module won't support implicit ebreak in program buffer\n");
   fprintf(stderr, "  --blocksz=<size>      Cache block size (B) for CMO operations(powers of 2) [default 64]\n");
-
+// rivai beg
+  fprintf(stderr, "                        \n");
+  fprintf(
+      stderr,
+      "                        The following is the parameter of simpoint,\n");
+  fprintf(stderr,
+          "                        simpoint only supports single core now\n");
+  fprintf(stderr, "  --simpoint=<filename> Read a simpoint file to create "
+                  "multiple checkpoints\n");
+  fprintf(stderr, "  --intervals=<num>     The basic blocks executed in each "
+                  "program, breaking\n");
+  fprintf(stderr, "                        the program up into contiguous "
+                  "intervals of size N\n");
+  fprintf(stderr, "                        (for example, 1 million, 10 "
+                  "million, or 100 million instructions)\n");
+  fprintf(stderr, "  --simpoint_roi        Enable the region of interest, "
+                  "spike will trace the phase of program form the\n");
+  fprintf(
+      stderr,
+      "                        beginning without write simpoint custom csr.\n");
+  fprintf(stderr, "  --simpoint_start      If simpoint_roi is not enabled, "
+                  "spike will trace the phase of program from pc\n");
+  fprintf(stderr, "                        greater than or equal to "
+                  "simpoint_start, the default value is UINT64_MAX\n");
+  fprintf(stderr, "  --maxinsns=<num>      Terminates execution after a number "
+                  "of instructions\n");
+  fprintf(stderr,
+          "  --load=<filename>     Resumes a previously saved snapshot\n");
+  fprintf(stderr, "  --save=<filename>     Saves a snapshot upon exit\n");
+  fprintf(stderr, "  --compress            Load/save a compressed snapshot, "
+                  "saving space but taking more time\n");
+  fprintf(stderr, "  --memsize=<size>      Memsize in unit of GB [default 2, options: 2, 4, 8]\n");
+  fprintf(stderr, "  --vmaskone            If this is provided, then the vector destination will be overwritten with 1s,\n");
+  fprintf(stderr, "                         otherwise the value they previously held are retained\n");
+// rivai end
   exit(exit_code);
 }
 
@@ -315,6 +370,9 @@ static std::vector<size_t> parse_hartids(const char *s)
 
 int main(int argc, char** argv)
 {
+  //// RiVAI: gprof add --ZQ
+  bool prof_en = false;
+  //// RiVAI: gprof add end --ZQ
   bool debug = false;
   bool halted = false;
   bool histogram = false;
@@ -330,6 +388,7 @@ int main(int argc, char** argv)
   std::unique_ptr<cache_sim_t> l2;
   bool log_cache = false;
   bool log_commits = false;
+  bool log_commits_stant = false;
   const char *log_path = nullptr;
   std::vector<std::function<extension_t*()>> extensions;
   const char* initrd = NULL;
@@ -388,7 +447,7 @@ int main(int argc, char** argv)
   parser.option(0, "big-endian", 0, [&](const char UNUSED *s){cfg.endianness = endianness_big;});
   parser.option(0, "misaligned", 0, [&](const char UNUSED *s){cfg.misaligned = true;});
   parser.option(0, "log-cache-miss", 0, [&](const char UNUSED *s){log_cache = true;});
-  parser.option(0, "isa", 1, [&](const char* s){cfg.isa = s;});
+  parser.option(0, "isa", 1, [&](const char* s){cfg.isa = s; cfg.explicit_isa = true;/*code ext*/});
   parser.option(0, "pmpregions", 1, [&](const char* s){cfg.pmpregions = atoul_safe(s);});
   parser.option(0, "pmpgranularity", 1, [&](const char* s){cfg.pmpgranularity = atoul_safe(s);});
   parser.option(0, "priv", 1, [&](const char* s){cfg.priv = s;});
@@ -431,6 +490,8 @@ int main(int argc, char** argv)
       [&](const char UNUSED *s){dm_config.support_haltgroups = false;});
   parser.option(0, "log-commits", 0,
                 [&](const char UNUSED *s){log_commits = true;});
+  parser.option(0, "log-commits-stant", 0,
+                [&](const char UNUSED *s){log_commits_stant = true;});
   parser.option(0, "log", 1,
                 [&](const char* s){log_path = s;});
   FILE *cmd_file = NULL;
@@ -450,12 +511,101 @@ int main(int argc, char** argv)
       exit(-1);
     }
   });
-
+  // rivai beg
+  parser.option(0, "memsize", 1, [&](const char* s){
+    if (strcmp(s, "2") == 0) {
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
+    } else if (strcmp(s, "4") == 0) {
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_4G);
+    } else if (strcmp(s, "8") == 0) {
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_8G);
+    } else {
+      printf("memsize args is wrong, set default memsize 2G\n");
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
+    }
+  });
+  parser.option(0, "vmaskone", 0, [&](const char* UNUSED s){
+    g_easy_args.vmaskone = true;
+  });
+  //// RiVAI: simpoint parameters add --YC
+  simpoint_module_config_t sm_config = {
+      .simpoint_file_name = nullptr,
+      .maxinsns = 0,
+      .intervals = 0,
+      .snapshot_load_name = nullptr,
+      .snapshot_save_name = nullptr,
+      .simpoint_roi = false,
+      .simpoint_start = UINT64_MAX,
+      .snapshot_compress = false,
+  };
+  parser.option(0, "simpoint", 1,
+                [&](const char *s) { sm_config.simpoint_file_name = s; });
+  parser.option(0, "intervals", 1, [&](const char *s) {
+    sm_config.intervals = strtoul(s, nullptr, 10);
+  });
+  parser.option(0, "maxinsns", 1, [&](const char *s) {
+    if (sm_config.simpoint_file_name) {
+      std::cerr << "'maxinsns' not supported for use with the 'simpoint' option"
+                << std::endl;
+      exit(-1);
+    }
+    sm_config.maxinsns = strtoul(s, nullptr, 10);
+  });
+  parser.option(0, "load", 1, [&](const char *s) {
+    if (sm_config.simpoint_file_name) {
+      std::cerr << "'load' not supported for use with the 'simpoint' option"
+                << std::endl;
+      exit(-1);
+    }
+    if (prof_en) {
+      std::cerr << "simpoint don't support run with prof" << std::endl;
+      exit(-1);
+    }
+    sm_config.snapshot_load_name = s;
+    // Set start pc to simpoint bootrom base
+    cfg.start_pc = SIMPOINT_BOOTROM_BASE;
+  });
+  parser.option(0, "save", 1, [&](const char *s) {
+    if (sm_config.simpoint_file_name) {
+      std::cerr << "'save' not supported for use with the 'simpoint' option"
+                << std::endl;
+      exit(-1);
+    }
+    sm_config.snapshot_save_name = s;
+  });
+  parser.option(0, "simpoint_roi", 0, [&](const char *s) {
+    if (sm_config.simpoint_file_name) {
+      std::cerr
+          << "'simpoint_roi' not supported for use with the 'simpoint' option"
+          << std::endl;
+      exit(-1);
+    }
+    sm_config.simpoint_roi = true;
+  });
+  parser.option(0, "simpoint_start", 1, [&](const char *s) {
+    if (sm_config.simpoint_roi) {
+      std::cerr << "enable 'simpoint_roi' does not need to set "
+                   "'simpoint_start' option"
+                << std::endl;
+      exit(-1);
+    }
+    sm_config.simpoint_start = strtoul(s, nullptr, 16);
+  });
+  parser.option(0, "compress", 0,
+                [&](const char *s) { sm_config.snapshot_compress = true; });
+  //// RiVAI: simpoint parameters add end --YC
+  // rivai end
   auto argv1 = parser.parse(argv);
   std::vector<std::string> htif_args(argv1, (const char*const*)argv + argc);
 
-  if (!*argv1)
-    help();
+  //// RiVAI: simpoint add --YC
+  if (sm_config.snapshot_load_name) {
+    htif_args.insert(htif_args.begin(), "none");
+    //// RiVAI: simpoint add end --YC
+  } else {
+    if (!*argv1)
+      help();
+  }
 
   std::vector<std::pair<reg_t, abstract_mem_t*>> mems =
       make_mems(cfg.mem_layout);
@@ -515,6 +665,11 @@ int main(int argc, char** argv)
   std::unique_ptr<remote_bitbang_t> remote_bitbang((remote_bitbang_t *) NULL);
   std::unique_ptr<jtag_dtm_t> jtag_dtm(
       new jtag_dtm_t(&s.debug_module, dmi_rti));
+  //// RiVAI: simpoint add --YC
+  if (sm_config.is_simpoint_enabled()) {
+    s.set_simpoint_module(sm_config);
+  }
+  //// RiVAI: simpoint add end --YC
   if (use_rbb) {
     remote_bitbang.reset(new remote_bitbang_t(rbb_port, &(*jtag_dtm)));
     s.set_remote_bitbang(&(*remote_bitbang));
@@ -539,13 +694,14 @@ int main(int argc, char** argv)
   }
 
   s.set_debug(debug);
-  s.configure_log(log, log_commits);
+  s.configure_log(log, log_commits, log_commits_stant);
   s.set_histogram(histogram);
 
   auto return_code = s.run();
 
-  for (auto& mem : mems)
-    delete mem.second;
+  // rivai: Avoid memory double free in standalone spike
+  // for (auto& mem : mems)
+  //   delete mem.second;
 
   return return_code;
 }

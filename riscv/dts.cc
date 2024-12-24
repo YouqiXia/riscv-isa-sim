@@ -12,6 +12,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
+#include "spikeAdpterHooks.hpp"
+
 std::string make_dts(size_t insns_per_rtc_tick, size_t cpu_hz,
                      const cfg_t* cfg,
                      std::vector<std::pair<reg_t, abstract_mem_t*>> mems,
@@ -126,7 +128,11 @@ static std::string dtc_compile(const std::string& dtc_input, bool compile)
       }
     }
     close(dtc_input_pipe[1]);
-    exit(0);
+// rivai beg
+    if (exitHook(0)) {
+      exit(0);
+    }
+// rivai end
   }
 
   pid_t dtc_output_pid;

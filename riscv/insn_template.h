@@ -7,6 +7,6 @@
 #include "internals.h"
 #include "specialize.h"
 #include "tracer.h"
-#include "v_ext_macros.h"
+#include "v_ext_macros_extension.h" // rivai
 #include "debug_defines.h"
 #include <assert.h>

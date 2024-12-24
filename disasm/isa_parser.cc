@@ -381,6 +381,8 @@ isa_parser_t::isa_parser_t(const char* str, const char *priv)
       extension_table['X'] = true;
       if (ext_str.size() == 1) {
         bad_isa_string(str, "single 'X' is not a proper name");
+      } else if (ext_str == "xkgost") { // code ext
+          extension_table[EXT_XKGOST] = true;
       } else if (ext_str != "xdummy") {
         extensions.insert(ext_str.substr(1));
       }

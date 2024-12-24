@@ -1,0 +1,12 @@
+patch_hdrs = \
+	ctrl_arg.h \
+	prof_module.h \
+	gprof_elf_symbol_loader.h \
+	gprof_struct_define.h \
+	simpoint_module.h \
+	endflag.h
+
+patch_srcs = \
+	prof_module.cc \
+	gprof_elf_symbol_loader.cc \
+	simpoint_module.cc

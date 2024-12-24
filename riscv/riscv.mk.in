@@ -6,6 +6,7 @@ riscv_subproject_deps = \
 	disasm \
 	fesvr \
 	softfloat \
+	patch \
 
 riscv_CFLAGS = -fPIC -I$(src_dir)/fdt
 
@@ -44,6 +45,11 @@ riscv_install_hdrs = \
 	trap.h \
 	triggers.h \
 	vector_unit.h \
+	dts_extension.h \
+	devices_extension.h \
+	v_ext_macros_extension.h \
+	easy_args.h \
+	spikehooker.h \
 
 riscv_precompiled_hdrs = \
 	insn_template.h \
@@ -74,6 +80,8 @@ riscv_srcs = \
 	socketif.cc \
 	cfg.cc \
 	$(riscv_gen_srcs) \
+	dts_extension.cc \
+	rivai_uart.cc \
 
 riscv_test_srcs = \
   check-opcode-overlap.t.cc \
@@ -1092,6 +1100,28 @@ riscv_insn_ext_zvk = \
 	$(riscv_insn_ext_zvksed) \
 	$(riscv_insn_ext_zvksh) \
 
+riscv_insn_ext_xkgost = \
+	kuzn32esx \
+	kuzn32dsx \
+	kuzn32dl \
+	kuzn32dlh \
+	kuzn32elh \
+	kuzn32el \
+	magma32g \
+	sbg32tau1 \
+	sbg32tau2 \
+	sbg32lin1 \
+	sbg32lin2 \
+	kuzn64esx \
+	kuzn64dsx \
+	kuzn64dl \
+	kuzn64el \
+	magma64 \
+	sbg64tau1 \
+	sbg64tau2 \
+	sbg64lin1 \
+	sbg64lin2 \
+
 riscv_insn_list = \
 	$(riscv_insn_ext_i) \
 	$(riscv_insn_ext_c) \
@@ -1125,6 +1155,7 @@ riscv_insn_list = \
 	$(riscv_insn_ext_zcmop) \
 	$(riscv_insn_ext_zicfilp) \
 	$(riscv_insn_ext_zicfiss) \
+	$(riscv_insn_ext_xkgost) \
 
 riscv_gen_srcs = $(addsuffix .cc,$(riscv_insn_list))
 

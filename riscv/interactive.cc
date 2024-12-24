@@ -24,6 +24,10 @@
 #include <algorithm>
 #include <math.h>
 
+// rivai beg
+#include "easy_args.h"
+// rivai end
+
 #ifdef __GNUC__
 # pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
@@ -291,6 +295,7 @@ void sim_t::interactive()
   funcs["q"] = funcs["quit"];
   funcs["help"] = &sim_t::interactive_help;
   funcs["h"] = funcs["help"];
+  funcs["extension"] = &sim_t::interactive_extension;
 
   while (!done())
   {
@@ -429,7 +434,12 @@ void sim_t::interactive_run(const std::string& cmd, const std::vector<std::strin
 
 void sim_t::interactive_quit(const std::string& cmd, const std::vector<std::string>& args)
 {
-  exit(0);
+// rivai beg
+  printf("%s %d \n", __func__, __LINE__);
+  if (exitHook(0)) {
+    exit(0);
+  }
+// rivai end
 }
 
 reg_t sim_t::get_pc(const std::vector<std::string>& args)
@@ -839,4 +849,67 @@ void sim_t::interactive_mtimecmp(const std::string& cmd, const std::vector<std::
   std::ostream out(sout_.rdbuf());
   out << std::hex << std::setfill('0') << "0x" << std::setw(16)
       << clint->get_mtimecmp(p->get_id()) << std::endl;
+}
+
+void sim_t::interactive_extension(const std::string& cmd, const std::vector<std::string>& args)
+{
+  if (args.size() < 1)
+    throw trap_interactive();
+
+  std::string split_code = "------";
+
+  if (args[0] == "all") {
+    std::string child_cmd;
+    std::vector<std::string> child_args;
+    {
+      child_cmd.clear();
+      child_args.clear();
+      child_cmd = "pc";
+      child_args.push_back(args[1]);
+      interactive_pc(child_cmd, child_args);
+    }
+
+    sout_ << split_code << '\n';
+    auto get_all_reg = [&]() {
+      child_cmd.clear();
+      child_args.clear();
+      child_cmd = "reg";
+      child_args.push_back(args[1]);
+      interactive_reg(child_cmd, child_args);
+    };
+    get_all_reg();
+
+    sout_ << split_code << '\n';
+    auto get_all_vreg = [&]() {
+      child_cmd.clear();
+      child_args.clear();
+      child_cmd = "vreg";
+      child_args.push_back(args[1]);
+      interactive_vreg(child_cmd, child_args);
+    };
+    get_all_vreg();
+
+    sout_ << split_code << '\n';
+    auto get_all_freg = [&]() {
+      child_cmd.clear();
+      child_args.clear();
+      child_cmd = "freg";
+      child_args.push_back(args[1]);
+      for (size_t i = 0; i < 32; ++i) {
+        child_args.push_back(std::to_string(i));
+        interactive_freg(child_cmd, child_args);
+        child_args.pop_back();
+      }
+    };
+    get_all_freg();
+  } else if (args[0] == "multi-proc") {
+    g_easy_args.specify_proc = true;
+    sout_ << "set multi-proc\n";
+  } else if (args[0] == "step") {
+    set_procs_debug(true);
+    set_current_proc(std::stoull(args[1]));
+    step(1);
+  } else {
+    throw trap_interactive();
+  }
 }

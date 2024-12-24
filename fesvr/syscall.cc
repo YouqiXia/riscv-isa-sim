@@ -204,6 +204,17 @@ std::string syscall_t::undo_chroot(const char* fn)
   return "/";
 }
 
+// rivai beg
+#define CMD_CORE_ID_BIT 24
+int get_core_id(reg_t cmd_payload) {
+  return (cmd_payload >> CMD_CORE_ID_BIT);
+}
+
+uint64_t get_fail_code(reg_t cmd_payload) {
+  return (cmd_payload & ((1UL << CMD_CORE_ID_BIT) - 1)) >> 1;
+}
+// rivai end
+
 void syscall_t::handle_syscall(command_t cmd)
 {
   if (cmd.payload() & 1) // test pass/fail
@@ -211,7 +222,10 @@ void syscall_t::handle_syscall(command_t cmd)
     htif->exitcode = cmd.payload();
     if (htif->exit_code())
       std::cerr << "*** FAILED *** (tohost = " << htif->exit_code() << ")" << std::endl;
-    return;
+// rivai beg
+    printf("*** core%d %s exit *** \n", get_core_id(cmd.payload()), get_fail_code(cmd.payload()) ? "FAILED" : "PASSED");
+    // dont return here or no respond fromhost
+// rivai end
   }
   else // proxied system call
     dispatch(cmd.payload());
@@ -222,6 +236,10 @@ void syscall_t::handle_syscall(command_t cmd)
 reg_t syscall_t::sys_exit(reg_t code, reg_t a1, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   htif->exitcode = code << 1 | 1;
+// rivai beg
+  std::cerr << "[0]*** PASSED *** (tohost = " << htif->exit_code() << ")"
+            << std::endl;
+// rivai end
   return 0;
 }
 

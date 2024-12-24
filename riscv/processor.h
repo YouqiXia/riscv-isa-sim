@@ -17,7 +17,11 @@
 #include "triggers.h"
 #include "../fesvr/memif.h"
 #include "vector_unit.h"
-
+// rivai beg
+//// RiVAI: simpoint add --YC
+#include "../patch/simpoint_module.h"
+//// RiVAI: simpoint add end --YC
+// rivai end
 #define FIRST_HPMCOUNTER 3
 #define N_HPMCOUNTERS 29
 
@@ -65,7 +69,9 @@ struct insn_desc_t
 typedef std::map<reg_t, freg_t> commit_log_reg_t;
 
 // addr, value, size
-typedef std::vector<std::tuple<reg_t, uint64_t, uint8_t>> commit_log_mem_t;
+// rivai beg
+typedef std::vector<std::tuple<reg_t, uint64_t, uint8_t, reg_t>> commit_log_mem_t;
+// rivai end
 
 // architectural state of a RISC-V hart
 struct state_t
@@ -190,6 +196,11 @@ struct state_t
   int last_inst_flen;
 
   elp_t elp;
+// rivai beg
+  //// RiVAI: gprof add --ZQ
+  reg_t cycle; // reserve the original memory address
+  //// RiVAI: gprof add end --ZQ
+// rivai end
 
   bool critical_error;
 
@@ -247,6 +258,17 @@ public:
               simif_t* sim, uint32_t id, bool halt_on_reset,
               FILE *log_file, std::ostream& sout_); // because of command line option --log and -s we need both
   ~processor_t();
+// rivai beg
+  //// RiVAI: gprof add --ZQ
+  reg_t &get_cycle() { return state.cycle; }
+  //// RiVAI: simpoint add --YC
+  void set_debug_boot() {
+    // simpoint boot rom needs to run in debug mode.
+    state.debug_mode = true;
+    set_privilege(PRV_M, false);
+  }
+  //// RiVAI: simpoint add end --YC
+// rivai end
 
   const isa_parser_t &get_isa() { return isa; }
   const cfg_t &get_cfg() { return *cfg; }
@@ -254,7 +276,9 @@ public:
   void set_debug(bool value);
   void set_histogram(bool value);
   void enable_log_commits();
-  bool get_log_commits_enabled() const { return log_commits_enabled; }
+  void enable_log_commits_stant();
+  bool get_log_commits_enabled() const { return log_commits_enabled || log_commits_stant_enabled; }
+  bool get_log_commits_stant_enabled() const { return log_commits_stant_enabled; }
   void reset();
   void step(size_t n); // run for n cycles
   void put_csr(int which, reg_t val);
@@ -367,6 +391,20 @@ public:
   bool is_waiting_for_interrupt() { return in_wfi; };
 
   void check_if_lpad_required();
+// rivai beg
+  //// RiVAI: simpoint add --YC
+  void set_simpoint_module(simpoint_module_t *sm) {
+    this->simpoint_module = sm;
+    this->state.csrmap[CSR_SIMPOINT] =
+        std::make_unique<simpoint_csr_t>(this, CSR_SIMPOINT);
+  }
+  simpoint_module_t *get_simpoint_module() const { return simpoint_module; }
+  //// RiVAI: simpoint add end --YC
+ private:
+  //// RiVAI: simpoint add --YC
+  simpoint_module_t *simpoint_module = nullptr;
+  //// RiVAI: simpoint add end --YC
+// rivai end
 
 private:
   const isa_parser_t isa;
@@ -381,6 +419,7 @@ private:
   unsigned xlen;
   bool histogram_enabled;
   bool log_commits_enabled;
+  bool log_commits_stant_enabled; /***code ext***/
   FILE *log_file;
   std::ostream sout_; // needed for socket command interface -s, also used for -d and -l, but not for --log
   bool halt_on_reset;

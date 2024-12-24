@@ -86,6 +86,7 @@ typedef enum {
   EXT_SMMPM,
   EXT_SMNPM,
   EXT_SSNPM,
+  EXT_XKGOST, // code ext
   NUM_ISA_EXTENSIONS
 } isa_extension_t;
 

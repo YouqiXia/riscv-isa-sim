@@ -2269,6 +2269,35 @@ void disassembler_t::add_instructions(const isa_parser_t* isa)
       DISASM_INSN("c.sspopchk", c_sspopchk_x5, 0, {&rvc_t0});
     }
   }
+
+  // code ext beg
+  if (isa->extension_enabled(EXT_XKGOST)) {
+    if (isa->get_max_xlen() == 64) {
+      DEFINE_RTYPE(magma64);
+      DEFINE_RTYPE(kuzn64esx);
+      DEFINE_RTYPE(kuzn64dsx);
+      DEFINE_RTYPE(kuzn64el);
+      DEFINE_RTYPE(kuzn64dl);
+      DEFINE_RTYPE(sbg64tau1);
+      DEFINE_RTYPE(sbg64tau2);
+      DEFINE_RTYPE(sbg64lin1);
+      DEFINE_RTYPE(sbg64lin2);
+    } else if (isa->get_max_xlen() == 32) {
+      DEFINE_RTYPE(magma32g);
+      DEFINE_RTYPE(kuzn32esx);
+      DEFINE_RTYPE(kuzn32dsx);
+      DEFINE_RTYPE(kuzn32el);
+      DEFINE_RTYPE(kuzn32elh);
+      DEFINE_RTYPE(kuzn32dl);
+      DEFINE_RTYPE(kuzn32dlh);
+      DEFINE_RTYPE(sbg32tau1);
+      DEFINE_RTYPE(sbg32tau2);
+      DEFINE_RTYPE(sbg32lin1);
+      DEFINE_RTYPE(sbg32lin2);
+    }
+
+  }
+  // code ext end
 }
 
 disassembler_t::disassembler_t(const isa_parser_t *isa)

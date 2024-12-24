@@ -35,7 +35,7 @@ processor_t::processor_t(const char* isa_str, const char* priv_str,
                          simif_t* sim, uint32_t id, bool halt_on_reset,
                          FILE* log_file, std::ostream& sout_)
 : debug(false), halt_request(HR_NONE), isa(isa_str, priv_str), cfg(cfg), sim(sim), id(id), xlen(0),
-  histogram_enabled(false), log_commits_enabled(false),
+  histogram_enabled(false), log_commits_enabled(false), log_commits_stant_enabled(false),
   log_file(log_file), sout_(sout_.rdbuf()), halt_on_reset(halt_on_reset),
   in_wfi(false), check_triggers_icount(false),
   impl_table(256, false), extension_enable_table(isa.get_extension_table()),
@@ -137,7 +137,9 @@ static int xlen_to_uxl(int xlen)
 
 void state_t::reset(processor_t* const proc, reg_t max_isa)
 {
-  pc = DEFAULT_RSTVEC;
+// rivai beg
+  pc = proc->get_cfg().start_pc.value_or((reg_t)PROC_START_PC_ADDR);;
+// rivai end
   XPR.reset();
   FPR.reset();
 
@@ -180,6 +182,11 @@ void processor_t::set_histogram(bool value)
 void processor_t::enable_log_commits()
 {
   log_commits_enabled = true;
+}
+
+void processor_t::enable_log_commits_stant()
+{
+  log_commits_stant_enabled = true;
 }
 
 void processor_t::reset()
@@ -275,6 +282,15 @@ void processor_t::set_mmu_capability(int cap)
 
 void processor_t::take_interrupt(reg_t pending_interrupts)
 {
+// rivai beg
+  bool keep_going = true;
+  if (get_log_commits_enabled()) {
+      keep_going = continueHook();
+  }
+  if (!keep_going) {
+      return;
+  }
+// rivai end
   // Do nothing if no pending interrupts
   if (!pending_interrupts) {
     return;
@@ -403,6 +419,21 @@ void processor_t::debug_output_log(std::stringstream *s)
 
 void processor_t::take_trap(trap_t& t, reg_t epc)
 {
+// rivai beg
+  // exception hook, will return if already in mispredict or exception
+  insn_fetch_t fetch;
+  try {
+    fetch = mmu->load_insn(epc);
+  } catch (...) {
+    // fetch one insn with self defined 0x1 - c.nop
+    fetch.insn = insn_t(0x1);
+  }
+  bool csr_trap_enable = false;
+  if (get_log_commits_enabled())
+    csr_trap_enable = excptionHook(&fetch, epc, t);
+  if (csr_trap_enable)
+    return;
+// rivai end
   unsigned max_xlen = isa.get_max_xlen();
 
   if (debug) {
@@ -536,6 +567,9 @@ void processor_t::take_trap(trap_t& t, reg_t epc)
     if (state.tcontrol) state.tcontrol->write((state.tcontrol->read() & CSR_TCONTROL_MTE) ? CSR_TCONTROL_MPTE : 0);
     set_privilege(PRV_M, false);
   }
+// rivai beg
+  getNpcHook(state.pc);
+// rivai end
 }
 
 void processor_t::take_trigger_action(triggers::action_t action, reg_t breakpoint_tval, reg_t epc, bool virt)

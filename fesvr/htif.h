@@ -29,7 +29,10 @@ class htif_t : public chunked_memif_t
   int exit_code();
   void set_expected_xlen(unsigned int m) { expected_xlen = m; }
   virtual memif_t& memif() { return mem; }
-
+// rivai beg
+  int get_exitcode (){ return exitcode; }
+  device_list_t device_list;
+// rivai end
   template<typename T> inline T from_target(target_endian<T> n) const
   {
     endianness_t endianness = get_target_endianness();
@@ -48,7 +51,19 @@ class htif_t : public chunked_memif_t
 
   addr_t get_tohost_addr() { return tohost_addr; }
   addr_t get_fromhost_addr() { return fromhost_addr; }
-
+// rivai beg
+  // RiVAI: simpoint add --YC
+  void set_tohost_addr(addr_t addr) { tohost_addr = addr; }
+  void set_fromhost_addr(addr_t addr) { fromhost_addr = addr; }
+  syscall_t *get_syscall() { return &syscall_proxy; }
+  void set_targets(const std::vector<std::string> &targets) {
+    targs = targets;
+  };
+  // RiVAI: simpoint add --YC
+  // RiVAI: gprof add --ZQ
+  const std::vector<std::string> &get_targets() { return targs; };
+  // RiVAI: gprof add end --ZQ
+// rivai end
  protected:
   virtual void reset() = 0;
 
@@ -96,7 +111,7 @@ class htif_t : public chunked_memif_t
   int exitcode;
   bool stopped;
 
-  device_list_t device_list;
+  
   syscall_t syscall_proxy;
   bcd_t bcd;
   std::vector<device_t*> dynamic_devices;

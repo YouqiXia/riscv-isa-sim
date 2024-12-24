@@ -14,6 +14,8 @@
 #include "cfg.h"
 #include <stdlib.h>
 #include <vector>
+#include "spikeAdpterHooks.hpp"
+#include "spikehooker.h"
 
 // virtual memory configuration
 #define PGSHIFT 12
@@ -83,19 +85,31 @@ public:
   template<typename T>
   T ALWAYS_INLINE load(reg_t addr, xlate_flags_t xlate_flags = {}) {
     target_endian<T> res;
+// rivai beg
+    if (!continueHook()) {
+      // log mem read info when no continue
+      if (unlikely(proc && proc->get_log_commits_enabled())) {
+        reg_t paddr = translate(generate_access_info(addr, LOAD, {}), sizeof(T));
+        proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T), paddr));
+      }
+      return from_target(res);
+    }
+// rivai end
     reg_t vpn = addr >> PGSHIFT;
     bool aligned = (addr & (sizeof(T) - 1)) == 0;
     bool tlb_hit = tlb_load_tag[vpn % TLB_ENTRIES] == vpn;
 
-    if (likely(!xlate_flags.is_special_access() && aligned && tlb_hit)) {
+    if (not BACKUP_ON and likely(!xlate_flags.is_special_access() && aligned && tlb_hit)) {
       res = *(target_endian<T>*)(tlb_data[vpn % TLB_ENTRIES].host_offset + addr);
     } else {
       load_slow_path(addr, sizeof(T), (uint8_t*)&res, xlate_flags);
     }
-
-    if (unlikely(proc && proc->get_log_commits_enabled()))
-      proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T)));
-
+// rivai beg
+    if (unlikely(proc && proc->get_log_commits_enabled())) {
+      reg_t paddr = translate(generate_access_info(addr, LOAD, {}), sizeof(T));
+      proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T), paddr));
+    }
+// rivai end
     return from_target(res);
   }
 
@@ -123,20 +137,47 @@ public:
   }
 
   template<typename T>
-  void ALWAYS_INLINE store(reg_t addr, T val, xlate_flags_t xlate_flags = {}) {
+  void ALWAYS_INLINE store(reg_t addr, T val, xlate_flags_t xlate_flags = {}, bool skipExe = false/*rivai*/) {
+// rivai beg
+    if (unlikely(proc && proc->get_log_commits_enabled())) {
+      reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
+      proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
+    }
+    if (!continueHook()) {
+      // log mem write info when no continue
+      // if (unlikely(proc && proc->get_log_commits_enabled())) {
+      //   reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
+      //   proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
+      // }
+      return;
+    }
+    if (skipExe) {
+      return;
+    }
+
+    std::shared_ptr<bool> real_store = std::make_shared<bool>(false);
+    BACKUP_EXEC_ARG(setDummyStored, false);
+    if (unlikely(proc && proc->get_log_commits_enabled())) {
+      catchDataBeforeWriteHook(addr, val, sizeof(T), real_store);
+    }
+// rivai end
     reg_t vpn = addr >> PGSHIFT;
     bool aligned = (addr & (sizeof(T) - 1)) == 0;
     bool tlb_hit = tlb_store_tag[vpn % TLB_ENTRIES] == vpn;
 
-    if (!xlate_flags.is_special_access() && likely(aligned && tlb_hit)) {
+    if (not BACKUP_ON and !xlate_flags.is_special_access() && likely(aligned && tlb_hit)) {
       *(target_endian<T>*)(tlb_data[vpn % TLB_ENTRIES].host_offset + addr) = to_target(val);
     } else {
       target_endian<T> target_val = to_target(val);
       store_slow_path(addr, sizeof(T), (const uint8_t*)&target_val, xlate_flags, true, false);
     }
-
-    if (unlikely(proc && proc->get_log_commits_enabled()))
-      proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T)));
+// rivai beg
+    if (unlikely(proc && proc->get_log_commits_enabled()) and not BACKUP_BOOL(getDummyStored)){
+      // reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
+      // proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
+      *real_store = true;
+    }
+// rivai end
   }
 
   template<typename T>
@@ -254,7 +295,10 @@ public:
   {
     load_reservation_address = (reg_t)-1;
   }
-
+// rivai beg
+  inline reg_t get_load_reservation() { return load_reservation_address; }
+  inline void set_load_reservation(reg_t reservation_address) { load_reservation_address = reservation_address; }
+// rivai end
   inline bool check_load_reservation(reg_t vaddr, size_t size)
   {
     if (vaddr & (size-1)) {
@@ -473,7 +517,7 @@ private:
   // ITLB lookup
   inline tlb_entry_t translate_insn_addr(reg_t addr) {
     reg_t vpn = addr >> PGSHIFT;
-    if (likely(tlb_insn_tag[vpn % TLB_ENTRIES] == vpn))
+    if (not BACKUP_ON and likely(tlb_insn_tag[vpn % TLB_ENTRIES] == vpn))
       return tlb_data[vpn % TLB_ENTRIES];
     return fetch_slow_path(addr);
   }

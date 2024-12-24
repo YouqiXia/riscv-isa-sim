@@ -32,7 +32,10 @@ struct fdt_reserve_entry {
 	fdt64_t address;
 	fdt64_t size;
 };
-
+// rivai beg
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+// rivai end
 struct fdt_node_header {
 	fdt32_t tag;
 	char name[0];
@@ -44,6 +47,9 @@ struct fdt_property {
 	fdt32_t nameoff;
 	char data[0];
 };
+// rivai beg
+#pragma GCC diagnostic pop
+// rivai end
 
 #endif /* !__ASSEMBLY */
 

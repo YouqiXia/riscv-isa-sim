@@ -52,10 +52,24 @@ csr_t::~csr_t() {
 }
 
 void csr_t::write(const reg_t val) noexcept {
-  const bool success = unlogged_write(val);
-  if (success) {
-    log_write();
+// rivai beg
+  bool keep_going = true;
+  if (proc->get_log_commits_enabled()) {
+    int reg_num = int(((address) << 4) | 4);
+    keep_going = getCsrHook(address, val);
   }
+  if (keep_going) {
+    std::shared_ptr<bool> real_store = std::make_shared<bool>(false);
+    if (proc->get_log_commits_enabled()) {
+      catchDataBeforeCsrHook(int(address), val, real_store);
+    }
+    const bool success = unlogged_write(val);
+    if (success) {
+      *real_store = true;
+      log_write();
+    }
+  }
+// rivai end
 }
 
 void csr_t::log_write() const noexcept {

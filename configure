@@ -6972,8 +6972,26 @@ printf "%s\n" "#define SPIKE_DASM_ENABLED /**/" >>confdefs.h
   # Output make variables
 
 
+### rivai beg
+    # Add subproject to our running list
+
+    subprojects="$subprojects patch"
+
+    # Process the subproject appropriately. If enabled add it to the
+    # $enabled_subprojects running shell variable, set a
+    # SUBPROJECT_ENABLED C define, and include the appropriate
+    # 'subproject.ac'.
 
 
+      { $as_echo "$as_me:${as_lineno-$LINENO}: configuring default subproject : patch" >&5
+$as_echo "$as_me: configuring default subproject : patch" >&6;}
+      ac_config_files="$ac_config_files patch.mk:patch/patch.mk.in"
+
+      enable_patch_sproj="yes"
+      subprojects_enabled="$subprojects_enabled patch"
+
+$as_echo "#define SPIKE_PATCH_ENABLED /**/" >>confdefs.h
+### rivai end
 
 
 #-------------------------------------------------------------------------
@@ -7689,6 +7707,9 @@ do
   case $ac_config_target in
     "fesvr.mk") CONFIG_FILES="$CONFIG_FILES fesvr.mk:fesvr/fesvr.mk.in" ;;
     "riscv.mk") CONFIG_FILES="$CONFIG_FILES riscv.mk:riscv/riscv.mk.in" ;;
+### rivai beg
+    "patch.mk") CONFIG_FILES="$CONFIG_FILES patch.mk:patch/patch.mk.in" ;;
+### rivai end
     "disasm.mk") CONFIG_FILES="$CONFIG_FILES disasm.mk:disasm/disasm.mk.in" ;;
     "customext.mk") CONFIG_FILES="$CONFIG_FILES customext.mk:customext/customext.mk.in" ;;
     "fdt.mk") CONFIG_FILES="$CONFIG_FILES fdt.mk:fdt/fdt.mk.in" ;;
