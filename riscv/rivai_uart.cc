@@ -7,6 +7,7 @@
 #include "platform.h"
 #include "term.h"
 #include "dts_extension.h"
+#include "tools_module.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // UART Z1 相关代码，资料链接 https://wkr4l3xyxk.feishu.cn/docx/R15rdzqACo2oaixdrjjcI5nYn0f
@@ -79,6 +80,7 @@ bool uart_z1_t::store(reg_t addr, size_t len, const uint8_t* bytes) {
     // 写入data寄存器，发送数据到控制台
     if ((addr == UART_DATA_REG) && (len == 4)) {
         canonical_terminal_t::write(bytes[0]);
+        roi_match->check(bytes[0]);
     }
 
     // 暂时不支持其他寄存的写入

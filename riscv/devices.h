@@ -133,6 +133,9 @@ class plic_t : public abstract_device_t, public abstract_interrupt_controller_t 
                      reg_t offset, uint32_t val);
 };
 
+// code ext beg
+class roi_match_t;
+// code ext end
 class ns16550_t : public abstract_device_t {
  public:
   ns16550_t(abstract_interrupt_controller_t *intctrl,
@@ -141,6 +144,9 @@ class ns16550_t : public abstract_device_t {
   bool store(reg_t addr, size_t len, const uint8_t* bytes) override;
   void tick(reg_t rtc_ticks) override;
   size_t size() { return NS16550_SIZE; }
+  // code ext beg
+  void set_roi_match(roi_match_t *r) { roi_match = r; }
+  // code ext end
  private:
   abstract_interrupt_controller_t *intctrl;
   uint32_t interrupt_id;
@@ -163,6 +169,10 @@ class ns16550_t : public abstract_device_t {
 
   int backoff_counter;
   static const int MAX_BACKOFF = 16;
+
+  // code ext beg
+  roi_match_t *roi_match = nullptr;
+  // code ext end
 };
 
 template<typename T>

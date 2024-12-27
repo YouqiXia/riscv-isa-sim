@@ -50,6 +50,8 @@ riscv_install_hdrs = \
 	v_ext_macros_extension.h \
 	easy_args.h \
 	spikehooker.h \
+	ext_utils.h \
+	tools_module.h \
 
 riscv_precompiled_hdrs = \
 	insn_template.h \
@@ -82,6 +84,7 @@ riscv_srcs = \
 	$(riscv_gen_srcs) \
 	dts_extension.cc \
 	rivai_uart.cc \
+	tools_module.cc \
 
 riscv_test_srcs = \
   check-opcode-overlap.t.cc \

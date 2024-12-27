@@ -7,6 +7,10 @@
 #include "sim.h"
 #include "dts.h"
 
+// code ext beg
+#include "tools_module.h"
+// code ext end
+
 #define UART_QUEUE_SIZE         64
 
 #define UART_RX                 0 /* In:  Receive buffer */
@@ -161,6 +165,7 @@ void ns16550_t::tx_byte(uint8_t val)
 {
   lsr |= UART_LSR_TEMT | UART_LSR_THRE;
   canonical_terminal_t::write(val);
+  roi_match->check(val);
 }
 
 bool ns16550_t::load(reg_t addr, size_t len, uint8_t* bytes)

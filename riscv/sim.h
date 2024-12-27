@@ -21,6 +21,10 @@
 #include <sys/types.h>
 
 // code extension beg
+#include "tools_module.h"
+// code extension end
+
+// code extension beg
 enum MultiProcErr : int8_t {
   NO_ERR = 0,
   WAIT_TICK = 1,
@@ -38,6 +42,7 @@ using device_factory_sargs_t = std::pair<const device_factory_t*, std::vector<st
 class sim_t : public htif_t, public simif_t
 {
   friend class SimExtension;
+  friend class tools_module_t;
 public:
   sim_t(const cfg_t *cfg, bool halted,
         std::vector<std::pair<reg_t, abstract_mem_t*>> mems,
@@ -76,7 +81,7 @@ public:
   // Callback for processors to let the simulation know they were reset.
   virtual void proc_reset(unsigned id) override;
 
-  static const size_t INTERLEAVE = 1; // rivai: Inorder to pass model rob replay, INTERLEAVE=1 is needed, but then it can not run 602.gcc_s.elf. todo: find out the reason.
+  static const size_t INTERLEAVE = 5000; // rivai: Inorder to pass model rob replay, INTERLEAVE=1 is needed, but then it can not run 602.gcc_s.elf. todo: find out the reason.
   static const size_t INSNS_PER_RTC_TICK = 100; // 10 MHz clock for 1 BIPS core
   static const size_t CPU_HZ = 1000000000; // 1GHz CPU
   //// RiVAI: simpoint add --YC
@@ -220,6 +225,7 @@ public:
   debug_module_t debug_module;
 
   // code extension beg
+public:
   void set_current_proc(size_t proc);
   struct {
     std::vector<size_t> proc_current_steps;
@@ -231,6 +237,12 @@ public:
   MultiProcErr proc_err(size_t id) const;
   size_t nprocs() const { return procs.size(); }
   char* sd_addr2Mem(reg_t paddr) { return addr_to_mem(paddr); }
+
+  const tools_module_t *get_tools_module() const { return tools_module.get(); }
+  state_t *get_state(size_t proc = 0) const { return procs[proc]->get_state(); }
+
+private:
+  std::unique_ptr<tools_module_t> tools_module;
   // code extension end
 };
 

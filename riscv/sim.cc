@@ -281,6 +281,9 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
         plic = std::static_pointer_cast<plic_t>(dev_ptr);
     }
   }
+  // code ext beg
+  tools_module = std::make_unique<tools_module_t>(this);
+  // code ext end
 }
 
 sim_t::~sim_t()
