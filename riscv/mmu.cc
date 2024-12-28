@@ -154,7 +154,7 @@ bool mmu_t::mmio_store(reg_t paddr, size_t len, const uint8_t* bytes)
 {
 // rivai beg
   bool keep_going = true;
-  if (proc->get_log_commits_enabled()) {
+  if (proc and proc->get_log_commits_enabled()) {
     keep_going = continueHook();
   }
   if (keep_going) {

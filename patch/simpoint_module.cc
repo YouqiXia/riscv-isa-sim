@@ -132,7 +132,7 @@ void simpoint_module_t::simpoint_step(size_t step) {
   }
 
   bool keep_going = true;
-  if (proc->get_log_commits_enabled()) {
+  if (proc and proc->get_log_commits_enabled()) {
     keep_going = continueHook();
   }
   if (keep_going) {
