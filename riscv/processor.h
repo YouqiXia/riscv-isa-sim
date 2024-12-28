@@ -472,6 +472,11 @@ public:
 
   vectorUnit_t VU;
   triggers::module_t TM;
+
+// code ext beg
+public:
+  void set_log_commits(bool val) { log_commits_enabled = val; }
+// code ext end
 };
 
 #endif

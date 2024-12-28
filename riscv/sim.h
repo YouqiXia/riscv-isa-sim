@@ -81,7 +81,7 @@ public:
   // Callback for processors to let the simulation know they were reset.
   virtual void proc_reset(unsigned id) override;
 
-  static const size_t INTERLEAVE = 5000; // rivai: Inorder to pass model rob replay, INTERLEAVE=1 is needed, but then it can not run 602.gcc_s.elf. todo: find out the reason.
+  static const size_t INTERLEAVE = 1; // rivai: Inorder to pass model rob replay, INTERLEAVE=1 is needed, but then it can not run 602.gcc_s.elf. todo: find out the reason.
   static const size_t INSNS_PER_RTC_TICK = 100; // 10 MHz clock for 1 BIPS core
   static const size_t CPU_HZ = 1000000000; // 1GHz CPU
   //// RiVAI: simpoint add --YC
@@ -240,6 +240,12 @@ public:
 
   const tools_module_t *get_tools_module() const { return tools_module.get(); }
   state_t *get_state(size_t proc = 0) const { return procs[proc]->get_state(); }
+
+  void set_log_commits(bool val) {
+    for (processor_t *proc : procs) {
+      proc->set_log_commits(val);
+    }
+  }
 
 private:
   std::unique_ptr<tools_module_t> tools_module;
