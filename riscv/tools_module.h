@@ -27,7 +27,7 @@ private:
   bool roi_beg = false;
   bool roi_end = false;
   stream_kmp_t roi_beg_checker{"CURR_MINSTRET"};
-  stream_kmp_t roi_end_checker{"CURR_MCYCLE"};
+  stream_kmp_t roi_end_checker{"CURR_MINSTRET"};
 };
 
 class sim_t;
