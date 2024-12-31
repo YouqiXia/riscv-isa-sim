@@ -27,6 +27,7 @@ struct insn_fetch_t
 {
   insn_func_t func;
   insn_t insn;
+  reg_t pc_ppn = 0; /*code ext*/
 };
 
 struct icache_entry_t {
@@ -363,6 +364,11 @@ public:
     }
 
     insn_fetch_t fetch = {proc->decode_insn(insn), insn};
+    // code ext beg
+    if (proc && proc->get_log_commits_enabled()) {
+      fetch.pc_ppn = tlb_entry.target_offset + addr;
+    }
+    // code ext end
     entry->tag = addr;
     entry->next = &icache[icache_index(addr + length)];
     entry->data = fetch;
