@@ -14,6 +14,7 @@
 #include <memory>
 #include <iostream>
 
+class trap_t;
 class simif_t;
 using SimID = simif_t*;
 class SpikeHooker {
@@ -41,6 +42,9 @@ public:
     sim_fast_ = sim2 ? sim2 : sim_fast_;
   }
 
+  virtual void hook_exit(int code) {}
+  static void exit(int code);
+
 protected:
   int cid_ = 0;
   bool dummy_stored_ = false;
@@ -50,6 +54,14 @@ protected:
 };
 
 inline std::shared_ptr<SpikeHooker> g_spike_hooker = nullptr;
+
+inline void SpikeHooker::exit(int code) {
+  if (g_spike_hooker) {
+    g_spike_hooker->hook_exit(code);
+  } else {
+    exit(code);
+  }
+}
 
 #define HOOK_BOOL(boolfunc) (g_spike_hooker and g_spike_hooker->boolfunc())
 #define BACKUP_ON (g_spike_hooker and g_spike_hooker->backupOn())

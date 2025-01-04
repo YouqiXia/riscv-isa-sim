@@ -476,6 +476,11 @@ public:
 // code ext beg
 public:
   void set_log_commits(bool val) { log_commits_enabled = val; }
+  void set_fast_log_commits(bool val) { fast_log_commits = val; }
+  bool get_fast_log_commits() const { return fast_log_commits; }
+
+private:
+  bool fast_log_commits = false;
 // code ext end
 };
 

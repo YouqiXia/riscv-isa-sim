@@ -47,7 +47,11 @@ static void handle_signal(int sig)
   signal(sig, &handle_signal);
 }
 
+// code ext beg
+#if(0)
 const size_t sim_t::INTERLEAVE;
+#endif
+// code ext end
 
 extern device_factory_t* clint_factory;
 extern device_factory_t* plic_factory;
@@ -593,5 +597,32 @@ MultiProcErr sim_t::proc_err(size_t id) const {
     return multi_proc_data.proc_errs[id];
   }
   return NO_ERR;
+}
+
+size_t sim_t::idle_ext(size_t n, size_t proc) {
+  if (done())
+    return 0;
+
+  // Only support one core for now.
+  size_t remain = n;
+  n = std::min(n, INTERLEAVE - current_step);
+  remain -= n;
+
+  if (debug || ctrlc_pressed)
+    interactive();
+  else
+    step(n);
+
+  if (not_in_step()) {
+    if (remote_bitbang)
+      remote_bitbang->tick();
+  }
+  
+  return remain;
+}
+
+bool sim_t::not_in_step() const {
+  // Only support one core for now.
+  return current_step == 0;
 }
 // code extension end

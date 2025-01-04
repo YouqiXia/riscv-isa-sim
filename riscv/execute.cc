@@ -63,9 +63,8 @@ static void commit_log_print_value(FILE *log_file, int width, uint64_t val)
 static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
 {
 // rivai beg
-  if (p->get_log_commits_enabled()) {
-      if (commitHook())
-        return;
+  if (p->get_log_commits_enabled() && commitHook()) {
+    return;
   }
 // rivai end
   FILE *log_file = p->get_log_file();
@@ -246,7 +245,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
 bool processor_t::slow_path()
 {
   return debug || state.single_step != state.STEP_NONE || state.debug_mode || log_commits_stant_enabled ||
-         log_commits_enabled || histogram_enabled || in_wfi || check_triggers_icount;
+         (log_commits_enabled && !fast_log_commits/*code ext*/) || histogram_enabled || in_wfi || check_triggers_icount;
 }
 
 // fetch/decode/execute loop

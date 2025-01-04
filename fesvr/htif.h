@@ -122,6 +122,13 @@ class htif_t : public chunked_memif_t
 
   friend class memif_t;
   friend class syscall_t;
+  friend class run_helper_t; /*code ext*/
+
+// code ext beg
+public:
+  bool is_signal_exit() const;
+  bool is_end() const;
+// code ext end
 };
 
 /* Alignment guide for emulator.cc options:

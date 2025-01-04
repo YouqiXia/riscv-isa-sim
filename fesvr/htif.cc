@@ -453,3 +453,13 @@ EMUALTOR VERILOG PLUSARGS\n\
 ", stdout);
   fputs("\n" HTIF_USAGE_OPTIONS, stdout);
 }
+
+// code ext beg
+bool htif_t::is_signal_exit() const {
+  return signal_exit;
+}
+
+bool htif_t::is_end() const {
+  return not (!signal_exit && exitcode == 0);
+}
+// code ext end
