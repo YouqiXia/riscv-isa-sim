@@ -555,6 +555,18 @@ private:
   triggers::matched_t *matched_trigger;
 
   friend class processor_t;
+
+  // code ext beg
+public:
+  insn_fetch_t ext_fetch_insn(reg_t addr) {
+    auto *icache = access_icache(addr);
+    if (icache) {
+      return icache->data;
+    }
+    throw std::runtime_error("ext_fetch_insn error");
+    return insn_fetch_t();
+  }
+  // code ext end
 };
 
 struct vm_info {

@@ -552,7 +552,7 @@ void sim_t::idle()
   if (debug || ctrlc_pressed)
     interactive();
   else
-    step(1);
+    step(INTERLEAVE);
 
   if (remote_bitbang)
     remote_bitbang->tick();
