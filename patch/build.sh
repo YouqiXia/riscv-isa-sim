@@ -1,4 +1,6 @@
 #!/bin/bash
+export PATH=/work/tools/gcc-10.3.0/bin:$PATH
+export LD_LIBRARY_PATH=/work/tools/gcc-10.3.0/lib64:$LD_LIBRARY_PATH
 
 set -euxo pipefail
 
@@ -12,6 +14,6 @@ fi
 rm -rf build
 mkdir build
 cd build
-${PROJ_ROOT}/software/spike/configure --prefix=$RISCV --without-boost --without-boost-asio --without-boost-regex --enable-commitlog
-make -j16
+../../software/spike/configure --prefix=$RISCV --without-boost --without-boost-asio --without-boost-regex --enable-commitlog
+make -j32
 make install
