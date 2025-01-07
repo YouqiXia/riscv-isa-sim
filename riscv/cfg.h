@@ -78,6 +78,7 @@ public:
   bool                    real_time_clint;
   reg_t                   trigger_count;
   bool                    explicit_isa = false; // code ext: for using commandline isa instead of dtb isa.
+  size_t                  interleave = 0; // code ext: for controlling core switch when running, disabled by default.
 
   size_t nprocs() const { return hartids.size(); }
   size_t max_hartid() const { return hartids.back(); }

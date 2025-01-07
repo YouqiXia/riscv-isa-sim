@@ -123,6 +123,12 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
   debug_mmu = new mmu_t(this, cfg->endianness, NULL);
 
+  // code ext beg
+  if (cfg->interleave != 0) {
+    set_interleave(cfg->interleave);
+  }
+  // code ext end
+
   // When running without using a dtb, skip the fdt-based configuration steps
   if (!dtb_enabled) {
     for (size_t i = 0; i < cfg->nprocs(); i++) {

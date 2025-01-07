@@ -139,6 +139,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --memsize=<size>      Memsize in unit of GB [default 2, options: 2, 4, 8]\n");
   fprintf(stderr, "  --vmaskone            If this is provided, then the vector destination will be overwritten with 1s,\n");
   fprintf(stderr, "                         otherwise the value they previously held are retained\n");
+  fprintf(stderr, "  --step=<interleave>   Set interleave for step in spike simulation\n");
 // rivai end
   exit(exit_code);
 }
@@ -527,6 +528,7 @@ int main(int argc, char** argv)
   parser.option(0, "vmaskone", 0, [&](const char* UNUSED s){
     g_easy_args.vmaskone = true;
   });
+  parser.option(0, "step", 1, [&](const char* s){cfg.interleave = atoul_safe(s);});
   //// RiVAI: simpoint parameters add --YC
   simpoint_module_config_t sm_config = {
       .simpoint_file_name = nullptr,
