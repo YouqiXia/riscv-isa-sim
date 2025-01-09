@@ -207,10 +207,8 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
   try {
     npc = fetch.func(p, fetch.insn, pc);
 // rivai beg
-    if (p != nullptr) {
-      if (p->get_log_commits_enabled()) {
-        decodeHook(&fetch, pc, npc);
-      }
+    if (p && p->get_log_commits_enabled()) {
+      decodeHook(&fetch, pc, npc);
     }
 // rivai end
     if (npc != PC_SERIALIZE_BEFORE) {
@@ -219,11 +217,21 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
       }
      }
   } catch (wait_for_interrupt_t &t) {
+// rivai beg
+    if (p && p->get_log_commits_enabled()) {
+      decodeHook(&fetch, pc, 0);
+    }
+// rivai end
       if (p->get_log_commits_enabled()) {
         commit_log_print_insn(p, pc, fetch.insn);
       }
       throw;
   } catch(mem_trap_t& t) {
+// rivai beg
+    if (p && p->get_log_commits_enabled()) {
+      decodeHook(&fetch, pc, 0);
+    }
+// rivai end
       //handle segfault in midlle of vector load/store
       if (p->get_log_commits_enabled()) {
         for (auto item : p->get_state()->log_reg_write) {
@@ -235,6 +243,11 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
       }
       throw;
   } catch(...) {
+// rivai beg
+    if (p && p->get_log_commits_enabled()) {
+      decodeHook(&fetch, pc, 0);
+    }
+// rivai end
     throw;
   }
   p->update_histogram(pc);
