@@ -369,7 +369,10 @@ void sim_t::interactive_help(const std::string& cmd, const std::vector<std::stri
   out <<
     "Interactive commands:\n"
     "reg <core> [reg]                # Display [reg] (all if omitted) in <core>\n"
+    /*
     "freg <core> <reg>               # Display float <reg> in <core> as hex\n"
+    */
+    "freg <core> [reg]               # Display float [reg] (all if omitted) in <core> as hex\n" /*code ext*/
     "fregh <core> <reg>              # Display half precision <reg> in <core>\n"
     "fregs <core> <reg>              # Display single precision <reg> in <core>\n"
     "fregd <core> <reg>              # Display double precision <reg> in <core>\n"
@@ -645,6 +648,7 @@ union fpr
   double d;
 };
 
+/*
 void sim_t::interactive_freg(const std::string& cmd, const std::vector<std::string>& args)
 {
   freg_t r = get_freg(args, 64);
@@ -652,6 +656,37 @@ void sim_t::interactive_freg(const std::string& cmd, const std::vector<std::stri
   std::ostream out(sout_.rdbuf());
   out << std::hex << "0x" << std::setfill ('0') << std::setw(16) << r.v[1] << std::setw(16) << r.v[0] << std::endl;
 }
+*/
+// code ext beg
+void sim_t::interactive_freg(const std::string& cmd, const std::vector<std::string>& args)
+{
+  if (args.size() < 1)
+    throw trap_interactive();
+
+  processor_t *p = get_core(args[0]);
+  int max_xlen = p->get_isa().get_max_xlen();
+
+  std::ostream out(sout_.rdbuf());
+  out << std::hex;
+
+  if (args.size() == 1) {
+    // Show all the fregs!
+
+    for (int r = 0; r < NXPR; ++r) {
+      out << std::setfill(' ') << std::setw(5) << fpr_name[r]
+          << ": 0x" << std::setfill('0') << std::setw(max_xlen/4)
+          << zext(p->get_state()->FPR[r].v[0], max_xlen);
+      if ((r + 1) % 4 == 0)
+        out << std::endl;
+    }
+  } else {
+    freg_t r = get_freg(args, max_xlen);
+
+    out << "0x" << std::setfill('0') << std::setw(max_xlen/4)
+        << r.v[1] << std::setw(16) << r.v[0] << std::endl;
+  }
+}
+// code ext end
 
 void sim_t::interactive_fregh(const std::string& cmd, const std::vector<std::string>& args)
 {
