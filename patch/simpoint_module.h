@@ -38,6 +38,7 @@ typedef struct simpoint_module_config {
   bool simpoint_roi;      // enable simpoint region of interest
   addr_t simpoint_start;  // enable simpoint trace from this start pc
   bool snapshot_compress; // whether the mianram of the snapshot is compressed
+  bool disable_host = false; // whether communicate with host.
 
   [[nodiscard]] bool is_simpoint_enabled() const {
     return ((maxinsns > 0) || (intervals > 0) || (simpoint_roi) ||

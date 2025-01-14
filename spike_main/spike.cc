@@ -137,6 +137,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --compress            Load/save a compressed snapshot, "
                   "saving space but taking more time\n");
   fprintf(stderr, "  --memsize=<size>      Memsize in unit of GB [default 2, options: 2, 4, 8]\n");
+  fprintf(stderr, "  --disable_host        Disable communicate with host when running simpoint");
   fprintf(stderr, "  --vmaskone            If this is provided, then the vector destination will be overwritten with 1s,\n");
   fprintf(stderr, "                         otherwise the value they previously held are retained\n");
   fprintf(stderr, "  --step=<interleave>   Set interleave for step in spike simulation\n");
@@ -513,18 +514,6 @@ int main(int argc, char** argv)
     }
   });
   // rivai beg
-  parser.option(0, "memsize", 1, [&](const char* s){
-    if (strcmp(s, "2") == 0) {
-      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
-    } else if (strcmp(s, "4") == 0) {
-      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_4G);
-    } else if (strcmp(s, "8") == 0) {
-      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_8G);
-    } else {
-      printf("memsize args is wrong, set default memsize 2G\n");
-      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
-    }
-  });
   parser.option(0, "vmaskone", 0, [&](const char* UNUSED s){
     g_easy_args.vmaskone = true;
   });
@@ -595,6 +584,20 @@ int main(int argc, char** argv)
   });
   parser.option(0, "compress", 0,
                 [&](const char *s) { sm_config.snapshot_compress = true; });
+  parser.option(0, "memsize", 1, [&](const char* s){
+    if (strcmp(s, "2") == 0) {
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
+    } else if (strcmp(s, "4") == 0) {
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_4G);
+    } else if (strcmp(s, "8") == 0) {
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_8G);
+    } else {
+      printf("memsize args is wrong, set default memsize 2G\n");
+      s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
+    }
+  });
+  parser.option(0, "disable_host", 0,
+                [&](const char *s) { sm_config.disable_host = true; });
   //// RiVAI: simpoint parameters add end --YC
   // rivai end
   auto argv1 = parser.parse(argv);
