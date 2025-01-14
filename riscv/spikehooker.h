@@ -14,9 +14,12 @@
 #include <memory>
 #include <iostream>
 
+class insn_fetch_t;
 class trap_t;
+
 class simif_t;
 using SimID = simif_t*;
+
 class SpikeHooker {
 public:
   virtual bool backupOn() const = 0;
@@ -45,6 +48,8 @@ public:
   virtual void hook_exit(int code) {}
   static void exit(int code);
 
+  virtual void onExecInsn(insn_fetch_t* in, uint64_t pc, uint64_t npc) {}
+
 protected:
   int cid_ = 0;
   bool dummy_stored_ = false;
@@ -62,6 +67,9 @@ inline void SpikeHooker::exit(int code) {
     exit(code);
   }
 }
+
+#define HOOK_EXEC(func, ...) \
+  if (g_spike_hooker) g_spike_hooker->func(__VA_ARGS__)
 
 #define HOOK_BOOL(boolfunc) (g_spike_hooker and g_spike_hooker->boolfunc())
 #define BACKUP_ON (g_spike_hooker and g_spike_hooker->backupOn())
