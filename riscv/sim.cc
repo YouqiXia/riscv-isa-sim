@@ -598,18 +598,24 @@ void sim_t::set_current_proc(size_t proc) {
 
 void sim_t::enable_specify_proc(bool val) { g_easy_args.specify_proc = val; }
 
-MultiProcErr sim_t::proc_err(size_t id) const {
+proc_err_t sim_t::proc_err(size_t id) const {
   if (id < multi_proc_data.proc_errs.size()) {
     return multi_proc_data.proc_errs[id];
   }
   return NO_ERR;
 }
 
-size_t sim_t::idle_ext(size_t n, size_t proc) {
+size_t sim_t::idle_ext(size_t n, size_t cid) {
   if (done())
     return 0;
 
-  // Only support one core for now.
+  if (multi_proc_data.proc_current_steps.empty()) {
+    multi_proc_data.proc_current_steps.resize(procs.size(), 0);
+    multi_proc_data.proc_errs.resize(procs.size(), NO_ERR);
+  }
+
+  current_step = multi_proc_data.proc_current_steps[cid];
+
   size_t remain = n;
   n = std::min(n, INTERLEAVE - current_step);
   remain -= n;
@@ -617,7 +623,7 @@ size_t sim_t::idle_ext(size_t n, size_t proc) {
   if (debug || ctrlc_pressed)
     interactive();
   else
-    step(n);
+    step_proc(n, cid);
 
   if (not_in_step()) {
     if (remote_bitbang)
@@ -628,7 +634,6 @@ size_t sim_t::idle_ext(size_t n, size_t proc) {
 }
 
 bool sim_t::not_in_step() const {
-  // Only support one core for now.
-  return current_step == 0;
+  return is_multicore_mode() ? multi_proc_data.steps_sum == 0 : current_step == 0;
 }
 // code extension end

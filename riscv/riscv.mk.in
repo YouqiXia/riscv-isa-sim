@@ -85,6 +85,7 @@ riscv_srcs = \
 	dts_extension.cc \
 	rivai_uart.cc \
 	tools_module.cc \
+	sim_extension.cc \
 
 riscv_test_srcs = \
   check-opcode-overlap.t.cc \

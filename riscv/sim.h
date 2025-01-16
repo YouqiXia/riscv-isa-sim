@@ -25,7 +25,7 @@
 // code extension end
 
 // code extension beg
-enum MultiProcErr : int8_t {
+enum proc_err_t : int8_t {
   NO_ERR = 0,
   WAIT_TICK = 1,
 };
@@ -198,9 +198,6 @@ private:
   void interactive_until(const std::string& cmd, const std::vector<std::string>& args, bool noisy);
   void interactive_until_silent(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_until_noisy(const std::string& cmd, const std::vector<std::string>& args);
-  // code extension beg
-  void interactive_extension(const std::string& cmd, const std::vector<std::string>& args);
-  // code extension end
   reg_t get_reg(const std::vector<std::string>& args);
   freg_t get_freg(const std::vector<std::string>& args, int size);
   reg_t get_mem(const std::vector<std::string>& args);
@@ -226,15 +223,17 @@ public:
 
   // code extension beg
 public:
+  void interactive_extension(const std::string& cmd, const std::vector<std::string>& args);
+
   void set_current_proc(size_t proc);
   struct {
     std::vector<size_t> proc_current_steps;
-    std::vector<MultiProcErr> proc_errs;
+    std::vector<proc_err_t> proc_errs;
     size_t steps_sum = 0;
   } multi_proc_data;
 
   void enable_specify_proc(bool val);
-  MultiProcErr proc_err(size_t id) const;
+  proc_err_t proc_err(size_t id) const;
   size_t nprocs() const { return procs.size(); }
   char* sd_addr2Mem(reg_t paddr) { return addr_to_mem(paddr); }
 
@@ -247,10 +246,16 @@ public:
     }
   }
 
-  size_t idle_ext(size_t n, size_t proc);
+  size_t idle_ext(size_t n, size_t cid);
   bool not_in_step() const;
 
   void set_interleave(size_t val) { INTERLEAVE = val; }
+
+  void step_proc(size_t n, size_t cid);
+
+  bool is_multicore_mode() const {
+    return not multi_proc_data.proc_current_steps.empty();
+  }
 
 private:
   std::unique_ptr<tools_module_t> tools_module;
