@@ -257,6 +257,13 @@ int htif_t::run()
       idle();
   }
 
+  // code ext beg
+  if (host_disabled) {
+    while (!signal_exit)
+      idle();
+  }
+  // code ext end
+
   while (!signal_exit && exitcode == 0)
   {
     uint64_t tohost;
@@ -461,5 +468,13 @@ bool htif_t::is_signal_exit() const {
 
 bool htif_t::is_end() const {
   return not (!signal_exit && exitcode == 0);
+}
+
+void htif_t::set_host_disabled(bool val) {
+  host_disabled = val;
+}
+
+bool htif_t::get_host_disabled() const {
+  return host_disabled;
 }
 // code ext end

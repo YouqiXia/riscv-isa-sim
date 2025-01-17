@@ -98,7 +98,7 @@ public:
         addr_t entry = 0;
         std::map<std::string, uint64_t> symbols =
             load_payload(elf_name, &entry, 0);
-        if (not sm_config.disable_host and symbols.count("tohost") && symbols.count("fromhost")) {
+        if (symbols.count("tohost") && symbols.count("fromhost")) {
           tohost_addr = symbols["tohost"];
           fromhost_addr = symbols["fromhost"];
           set_tohost_addr(tohost_addr);
@@ -253,9 +253,7 @@ public:
 
   void step_proc(size_t n, size_t cid);
 
-  bool is_multicore_mode() const {
-    return not multi_proc_data.proc_current_steps.empty();
-  }
+  bool is_multicore_mode() const;
 
 private:
   std::unique_ptr<tools_module_t> tools_module;

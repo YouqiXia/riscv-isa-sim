@@ -127,6 +127,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
   if (cfg->interleave != 0) {
     set_interleave(cfg->interleave);
   }
+  set_host_disabled(cfg->disable_host);
   // code ext end
 
   // When running without using a dtb, skip the fdt-based configuration steps

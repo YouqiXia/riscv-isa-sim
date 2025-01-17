@@ -518,6 +518,7 @@ int main(int argc, char** argv)
     g_easy_args.vmaskone = true;
   });
   parser.option(0, "step", 1, [&](const char* s){cfg.interleave = atoul_safe(s);});
+  parser.option(0, "disable_host", 0, [&](const char *s) { cfg.disable_host = true; });
   //// RiVAI: simpoint parameters add --YC
   simpoint_module_config_t sm_config = {
       .simpoint_file_name = nullptr,
@@ -596,8 +597,6 @@ int main(int argc, char** argv)
       s_platform_cfg.reinit(platform_cfg_t::MEMSIZE_2G);
     }
   });
-  parser.option(0, "disable_host", 0,
-                [&](const char *s) { sm_config.disable_host = true; });
   //// RiVAI: simpoint parameters add end --YC
   // rivai end
   auto argv1 = parser.parse(argv);

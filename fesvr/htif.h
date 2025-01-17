@@ -128,6 +128,11 @@ class htif_t : public chunked_memif_t
 public:
   bool is_signal_exit() const;
   bool is_end() const;
+  void set_host_disabled(bool val);
+  bool get_host_disabled() const;
+
+private:
+  bool host_disabled = false;
 // code ext end
 };
 

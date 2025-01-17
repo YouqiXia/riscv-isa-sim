@@ -10,8 +10,7 @@ void sim_t::step_proc(size_t n, size_t cid) {
     return;
   }
 
-  for (size_t i = 0, steps = 0; i < n; i += steps)
-  {
+  for (size_t i = 0, steps = 0; i < n; i += steps) {
     steps = std::min(n - i, INTERLEAVE - current_step);
     procs[cid]->step(steps);
 
@@ -27,7 +26,8 @@ void sim_t::step_proc(size_t n, size_t cid) {
       multi_proc_data.steps_sum = 0;
       reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
       if (not procs[cid]->get_log_commits_enabled() or continueHook()) {
-        for (auto &dev : devices) dev->tick(rtc_ticks);
+        for (auto &dev : devices)
+          dev->tick(rtc_ticks);
       }
 
       current_step = 0;
@@ -35,4 +35,8 @@ void sim_t::step_proc(size_t n, size_t cid) {
     }
     break;
   }
+}
+
+bool sim_t::is_multicore_mode() const {
+  return not multi_proc_data.proc_current_steps.empty();
 }
