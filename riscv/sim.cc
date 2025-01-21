@@ -28,15 +28,12 @@
  * @brief code ext: For some self-defined processing.
  * 
  */
-class SimExtension {
-public:
-  static void replace_isa(const char *dtb_file, const char **dtb_isa_ptr, const cfg_t* cfg) {
-    if (dtb_file != nullptr and cfg->explicit_isa) {
-      std::cout << "***Warnning*** Replace dtb isa: [" << *dtb_isa_ptr << "] by command line isa: [" << cfg->isa << "]" << std::endl;
-      *dtb_isa_ptr = cfg->isa;
-    }
+static void replace_isa(const char *dtb_file, const char **dtb_isa_ptr, const cfg_t* cfg) {
+  if (dtb_file != nullptr and cfg->explicit_isa) {
+    std::cout << "***Warnning*** Replace dtb isa: [" << *dtb_isa_ptr << "] by command line isa: [" << cfg->isa << "]" << std::endl;
+    *dtb_isa_ptr = cfg->isa;
   }
-};
+}
 
 volatile bool ctrlc_pressed = false;
 static void handle_signal(int sig)
@@ -87,6 +84,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 // rivai end
     debug_module(this, dm_config)
 {
+  is_halted = halted; /*code ext*/
   signal(SIGINT, &handle_signal);
 
   sout_.rdbuf(std::cerr.rdbuf()); // debug output goes to stderr by default
@@ -138,6 +136,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                       log_file.get(), sout_));
       harts[cfg->hartids[i]] = procs[i];
     }
+    isa_string = cfg->isa;/*code ext*/
     return;
   } // otherwise, generate the procs by parsing the DTS
 
@@ -221,7 +220,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
       std::cerr << "core (" << cpu_idx << ") has an invalid or missing 'riscv,isa'\n";
       exit(1);
     }
-    SimExtension::replace_isa(dtb_file, &isa_str, cfg);
+    replace_isa(dtb_file, &isa_str, cfg); /*code ext*/
 
     // handle hartid
     uint32_t hartid;
@@ -235,6 +234,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                     cfg, this, hartid, halted,
                                     log_file.get(), sout_));
     harts[hartid] = procs[cpu_idx];
+    isa_string = isa_str;/*code ext*/
 
     // handle pmp
     reg_t pmp_num, pmp_granularity;
@@ -368,7 +368,7 @@ void sim_t::step(size_t n)
       multi_proc_data.proc_current_steps[current_proc] = current_step;
       multi_proc_data.steps_sum += steps;
       if (current_step == INTERLEAVE) {
-        // procs[current_proc]->get_mmu()->yield_load_reservation();
+        // procs[current_proc]->get_mmu()->yield_load_reservation(); // disable it because of alignment with rtl.
       }
       if (multi_proc_data.steps_sum == procs.size() * INTERLEAVE) {
         for (auto &step_num : multi_proc_data.proc_current_steps) {
@@ -393,7 +393,7 @@ void sim_t::step(size_t n)
     if (current_step == INTERLEAVE)
     {
       current_step = 0;
-      // procs[current_proc]->get_mmu()->yield_load_reservation();
+      // procs[current_proc]->get_mmu()->yield_load_reservation(); // disable it because of alignment with rtl.
       if (++current_proc == procs.size()) {
         current_proc = 0;
         reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;

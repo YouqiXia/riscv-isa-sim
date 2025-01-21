@@ -255,8 +255,19 @@ public:
 
   bool is_multicore_mode() const;
 
+  void create_dummy_proc();
+  void push_dummy_proc(const char *isa_str, size_t hartid, bool halted);
+  processor_t *get_dummy_proc(size_t cid);
+  void dummy_proc_exec(size_t n, size_t cid);
+  void copy_to_dummy(size_t cid);
+
 private:
   std::unique_ptr<tools_module_t> tools_module;
+
+  bool dummy_proc_enabled = false;
+  bool is_halted = false;
+  std::string isa_string;
+  std::vector<std::unique_ptr<processor_t>> dummy_procs;
   // code extension end
 };
 

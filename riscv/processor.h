@@ -479,6 +479,8 @@ public:
   void set_fast_log_commits(bool val) { fast_log_commits = val; }
   bool get_fast_log_commits() const { return fast_log_commits; }
 
+  void dummy_step(size_t n);
+
 private:
   bool fast_log_commits = false;
 // code ext end

@@ -461,3 +461,19 @@ void processor_t::step(size_t n)
     n -= instret;
   }
 }
+
+// code ext beg
+void processor_t::dummy_step(size_t n) {
+  if (n != 1) {
+    throw std::runtime_error("Only support n == 1 in dummy_step for now");
+  }
+  try {
+    reg_t pc = state.pc;
+
+    insn_fetch_t fetch = mmu->ext_fetch_insn(pc);
+    execute_insn_logged(this, pc, fetch);
+  } catch (...) {
+    // do nothing in dummy process step.
+  }
+}
+// code ext end
