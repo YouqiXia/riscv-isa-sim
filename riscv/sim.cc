@@ -24,16 +24,14 @@
 #include "endflag.h"
 #include "easy_args.h"
 
-/**
- * @brief code ext: For some self-defined processing.
- * 
- */
+// code ext beg
 static void replace_isa(const char *dtb_file, const char **dtb_isa_ptr, const cfg_t* cfg) {
   if (dtb_file != nullptr and cfg->explicit_isa) {
     std::cout << "***Warnning*** Replace dtb isa: [" << *dtb_isa_ptr << "] by command line isa: [" << cfg->isa << "]" << std::endl;
     *dtb_isa_ptr = cfg->isa;
   }
 }
+// code ext end
 
 volatile bool ctrlc_pressed = false;
 static void handle_signal(int sig)
@@ -135,6 +133,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                       cfg, this, cfg->hartids[i], halted,
                                       log_file.get(), sout_));
       harts[cfg->hartids[i]] = procs[i];
+      hartid_to_idx_map[cfg->hartids[i]] = i; /*code ext*/
     }
     isa_string = cfg->isa;/*code ext*/
     return;
@@ -234,7 +233,10 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                     cfg, this, hartid, halted,
                                     log_file.get(), sout_));
     harts[hartid] = procs[cpu_idx];
-    isa_string = isa_str;/*code ext*/
+    // code ext beg
+    hartid_to_idx_map[hartid] = cpu_idx;
+    isa_string = isa_str;
+    // code ext end
 
     // handle pmp
     reg_t pmp_num, pmp_granularity;
@@ -299,14 +301,18 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
 sim_t::~sim_t()
 {
+  // code ext beg
   sout_ << CONNECT_ENDFLAG;
   sout_.flush();
+  // code ext end
   for (size_t i = 0; i < procs.size(); i++)
     delete procs[i];
   delete debug_mmu;
+  // code ext beg
   for (auto &mem : mems) {
     delete mem.second;
   }
+  // code ext end
 }
 
 // merge from p600v2 --ZQ
@@ -591,12 +597,6 @@ void sim_t::proc_reset(unsigned id)
 }
 
 // code extension beg
-void sim_t::set_current_proc(size_t proc) {
-  if (g_easy_args.specify_proc) {
-    current_proc = proc;
-  }
-}
-
 void sim_t::enable_specify_proc(bool val) { g_easy_args.specify_proc = val; }
 
 proc_err_t sim_t::proc_err(size_t id) const {
@@ -604,37 +604,5 @@ proc_err_t sim_t::proc_err(size_t id) const {
     return multi_proc_data.proc_errs[id];
   }
   return NO_ERR;
-}
-
-size_t sim_t::idle_ext(size_t n, size_t cid) {
-  if (done())
-    return 0;
-
-  if (multi_proc_data.proc_current_steps.empty()) {
-    multi_proc_data.proc_current_steps.resize(procs.size(), 0);
-    multi_proc_data.proc_errs.resize(procs.size(), NO_ERR);
-  }
-
-  current_step = multi_proc_data.proc_current_steps[cid];
-
-  size_t remain = n;
-  n = std::min(n, INTERLEAVE - current_step);
-  remain -= n;
-
-  if (debug || ctrlc_pressed)
-    interactive();
-  else
-    step_proc(n, cid);
-
-  if (not_in_step()) {
-    if (remote_bitbang)
-      remote_bitbang->tick();
-  }
-  
-  return remain;
-}
-
-bool sim_t::not_in_step() const {
-  return is_multicore_mode() ? multi_proc_data.steps_sum == 0 : current_step == 0;
 }
 // code extension end

@@ -1,44 +1,121 @@
 #include "sim.h"
 
+#include <iostream>
+
 #include "spikeAdpterHooks.hpp"
 
-void sim_t::step_proc(size_t n, size_t cid) {
-  multi_proc_data.proc_errs[cid] = NO_ERR;
-  current_step = multi_proc_data.proc_current_steps[cid];
-  if (current_step >= INTERLEAVE) {
-    multi_proc_data.proc_errs[cid] = WAIT_TICK;
-    return;
+#include "easy_args.h"
+#include "remote_bitbang.h"
+
+void sim_t::set_current_proc(size_t proc) {
+  if (g_easy_args.specify_proc) {
+    current_proc = proc;
   }
+}
 
-  for (size_t i = 0, steps = 0; i < n; i += steps) {
-    steps = std::min(n - i, INTERLEAVE - current_step);
-    procs[cid]->step(steps);
+size_t sim_t::hartid_to_idx(size_t hartid) const {
+  // return hartid_to_idx_map.at(hartid);
+  return hartid;
+}
 
-    current_step += steps;
-
-    multi_proc_data.proc_current_steps[cid] = current_step;
-    multi_proc_data.steps_sum += steps;
-
-    if (multi_proc_data.steps_sum == procs.size() * INTERLEAVE) {
-      for (auto &step_num : multi_proc_data.proc_current_steps) {
-        step_num = 0;
-      }
-      multi_proc_data.steps_sum = 0;
-      reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
-      if (not procs[cid]->get_log_commits_enabled() or continueHook()) {
-        for (auto &dev : devices)
-          dev->tick(rtc_ticks);
-      }
-
-      current_step = 0;
-      continue;
-    }
-    break;
+void sim_t::init_multicore_data() {
+  if (multi_proc_data.proc_current_steps.empty()) {
+    multi_proc_data.proc_current_steps.resize(procs.size(), 0);
+    multi_proc_data.proc_errs.resize(procs.size(), NO_ERR);
   }
 }
 
 bool sim_t::is_multicore_mode() const {
   return not multi_proc_data.proc_current_steps.empty();
+}
+
+size_t sim_t::idle_ext(size_t n, size_t cid) {
+  if (done())
+    return 0;
+
+  init_multicore_data();
+
+  current_step = multi_proc_data.proc_current_steps[hartid_to_idx(cid)];
+
+  size_t remain = n;
+  n = std::min(n, INTERLEAVE - current_step);
+  remain -= n;
+
+  if (debug || ctrlc_pressed)
+    interactive();
+  else
+    step_ext(n, cid);
+
+  if (not_in_step()) {
+    if (remote_bitbang)
+      remote_bitbang->tick();
+  }
+  
+  return remain;
+}
+
+bool sim_t::not_in_step() const {
+  return is_multicore_mode() ? multi_proc_data.steps_sum == 0 : current_step == 0;
+}
+
+void sim_t::step_ext(size_t n, size_t cid) {
+  while (n > 0) {
+    auto steps_done = step_proc(n, cid);
+    if (steps_done == 0) {
+      break;
+    }
+    n -= steps_done;
+  }
+
+  if (multi_proc_data.steps_sum == procs.size() * INTERLEAVE) {
+    devices_tick(INTERLEAVE);
+    prepare_next_ticks();
+  }
+}
+
+size_t sim_t::step_proc(size_t n, size_t cid) {
+  size_t total_steps = 0;
+  auto core_idx = hartid_to_idx(cid);
+
+  multi_proc_data.proc_errs[core_idx] = NO_ERR;
+  current_step = multi_proc_data.proc_current_steps[core_idx];
+  if (current_step >= INTERLEAVE) {
+    multi_proc_data.proc_errs[core_idx] = WAIT_TICK;
+    return 0;
+  }
+
+  for (size_t i = 0, steps = 0; i < n; i += steps) {
+    steps = std::min(n - i, INTERLEAVE - current_step);
+    procs[core_idx]->step(steps);
+
+    current_step += steps;
+
+    multi_proc_data.proc_current_steps[core_idx] = current_step;
+    multi_proc_data.steps_sum += steps;
+    total_steps += steps;
+    break;
+  }
+  return total_steps;
+}
+
+void sim_t::prepare_next_ticks() {
+  for (auto &step_num : multi_proc_data.proc_current_steps) {
+    step_num = 0;
+  }
+  multi_proc_data.steps_sum = 0;
+  current_step = 0;
+}
+
+void sim_t::devices_tick(size_t num) {
+  reg_t rtc_ticks = (num + REMAINDER) / INSNS_PER_RTC_TICK;
+  REMAINDER = (num + REMAINDER) % INSNS_PER_RTC_TICK;
+  if (not get_log_commits_enabled() or continueHook())
+    devices_rtc_tick(rtc_ticks);
+}
+
+void sim_t::devices_rtc_tick(size_t rtc_ticks) {
+  for (auto &dev : devices)
+    dev->tick(rtc_ticks);
 }
 
 void sim_t::create_dummy_proc() {
@@ -54,16 +131,16 @@ void sim_t::push_dummy_proc(const char *isa_str, size_t hartid, bool halted) {
 }
 
 processor_t *sim_t::get_dummy_proc(size_t cid) {
-  return dummy_procs[cid].get();
+  return dummy_procs[hartid_to_idx(cid)].get();
 }
 
 void sim_t::dummy_proc_exec(size_t n, size_t cid) {
-  dummy_procs[cid]->dummy_step(n);
+  dummy_procs[hartid_to_idx(cid)]->dummy_step(n);
 }
 
 void sim_t::copy_to_dummy(size_t cid) {
-  auto real_proc = procs[cid];
-  auto dummy_proc = dummy_procs[cid].get();
+  auto real_proc = procs[hartid_to_idx(cid)];
+  auto dummy_proc = dummy_procs[hartid_to_idx(cid)].get();
 
   assert(real_proc and dummy_proc);
 

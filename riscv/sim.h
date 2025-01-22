@@ -82,6 +82,7 @@ public:
   virtual void proc_reset(unsigned id) override;
 
   size_t INTERLEAVE = 1; // rivai: Inorder to pass model rob replay, INTERLEAVE=1 is needed, but then it can not run 602.gcc_s.elf. todo: find out the reason.
+  size_t REMAINDER = 0; /*code ext: record reminder when INTERLEAVE < INSNS_PER_RTC_TICK*/
   static const size_t INSNS_PER_RTC_TICK = 100; // 10 MHz clock for 1 BIPS core
   static const size_t CPU_HZ = 1000000000; // 1GHz CPU
   //// RiVAI: simpoint add --YC
@@ -241,19 +242,26 @@ public:
   state_t *get_state(size_t proc = 0) const { return procs[proc]->get_state(); }
 
   void set_log_commits(bool val) {
+    log_commits_enabled = val;
     for (processor_t *proc : procs) {
       proc->set_log_commits(val);
     }
   }
+  bool get_log_commits_enabled() const { return log_commits_enabled; }
+
+  void set_interleave(size_t val) { INTERLEAVE = val; }
+  size_t hartid_to_idx(size_t cid) const;
+  void init_multicore_data();
+  bool is_multicore_mode() const;
 
   size_t idle_ext(size_t n, size_t cid);
   bool not_in_step() const;
 
-  void set_interleave(size_t val) { INTERLEAVE = val; }
-
-  void step_proc(size_t n, size_t cid);
-
-  bool is_multicore_mode() const;
+  void step_ext(size_t n, size_t cid);
+  size_t step_proc(size_t n, size_t cid);
+  void prepare_next_ticks();
+  void devices_tick(size_t num);
+  void devices_rtc_tick(size_t rtc_ticks);
 
   void create_dummy_proc();
   void push_dummy_proc(const char *isa_str, size_t hartid, bool halted);
@@ -268,6 +276,9 @@ private:
   bool is_halted = false;
   std::string isa_string;
   std::vector<std::unique_ptr<processor_t>> dummy_procs;
+
+  std::unordered_map<size_t, size_t> hartid_to_idx_map;
+  bool log_commits_enabled = false;
   // code extension end
 };
 
