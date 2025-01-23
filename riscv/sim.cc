@@ -166,7 +166,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
     std::stringstream strstream;
     strstream << fin.rdbuf();
     dtb = strstream.str();
-    //dts = dtb_to_dts(dtb);
+    //dts = dtb_to_dts(dtb); // Call dtc crash in self-built process
   } else {
     std::pair<reg_t, reg_t> initrd_bounds = cfg->initrd_bounds;
     std::string device_nodes;

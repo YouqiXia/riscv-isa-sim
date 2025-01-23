@@ -37,9 +37,7 @@ size_t sim_t::idle_ext(size_t n, size_t cid) {
 
   current_step = multi_proc_data.proc_current_steps[hartid_to_idx(cid)];
 
-  size_t remain = n;
   n = std::min(n, INTERLEAVE - current_step);
-  remain -= n;
 
   if (debug || ctrlc_pressed)
     interactive();
@@ -51,26 +49,29 @@ size_t sim_t::idle_ext(size_t n, size_t cid) {
       remote_bitbang->tick();
   }
   
-  return remain;
+  return n;
 }
 
 bool sim_t::not_in_step() const {
   return is_multicore_mode() ? multi_proc_data.steps_sum == 0 : current_step == 0;
 }
 
-void sim_t::step_ext(size_t n, size_t cid) {
+size_t sim_t::step_ext(size_t n, size_t cid) {
+  size_t total_steps_done = 0;
   while (n > 0) {
     auto steps_done = step_proc(n, cid);
     if (steps_done == 0) {
       break;
     }
     n -= steps_done;
+    total_steps_done += steps_done;
   }
 
   if (multi_proc_data.steps_sum == procs.size() * INTERLEAVE) {
     devices_tick(INTERLEAVE);
     prepare_next_ticks();
   }
+  return total_steps_done;
 }
 
 size_t sim_t::step_proc(size_t n, size_t cid) {

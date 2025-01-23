@@ -257,7 +257,7 @@ public:
   size_t idle_ext(size_t n, size_t cid);
   bool not_in_step() const;
 
-  void step_ext(size_t n, size_t cid);
+  size_t step_ext(size_t n, size_t cid);
   size_t step_proc(size_t n, size_t cid);
   void prepare_next_ticks();
   void devices_tick(size_t num);
