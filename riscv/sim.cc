@@ -133,9 +133,10 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                       cfg, this, cfg->hartids[i], halted,
                                       log_file.get(), sout_));
       harts[cfg->hartids[i]] = procs[i];
-      hartid_to_idx_map[cfg->hartids[i]] = i; /*code ext*/
+      hartid_to_idx_map[cfg->hartids[i]] = i; /*code ext: record hartid*/
     }
-    isa_string = cfg->isa;/*code ext*/
+    isa_string = cfg->isa;/*code ext: record isa for usage*/
+    std::cout << "Final cores count: " << procs.size() << std::endl; // code ext: print final cores count
     return;
   } // otherwise, generate the procs by parsing the DTS
 
@@ -151,7 +152,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
     {clint_factory, {}}, // clint must be element 0
     {plic_factory, {}}, // plic must be element 1
     {ns16550_factory, {}},
-    {uart_z1_factory, {}}};
+    {uart_z1_factory, {}} /*code ext: add uart_z1 factory*/};
   device_factories.insert(device_factories.end(),
                           plugin_device_factories.begin(),
                           plugin_device_factories.end());
@@ -166,7 +167,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
     std::stringstream strstream;
     strstream << fin.rdbuf();
     dtb = strstream.str();
-    //dts = dtb_to_dts(dtb); // Call dtc crash in self-built process
+    //dts = dtb_to_dts(dtb); // code ext: Comment it because of calling dtc crash in self-built process
   } else {
     std::pair<reg_t, reg_t> initrd_bounds = cfg->initrd_bounds;
     std::string device_nodes;
@@ -203,7 +204,11 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
   for (cpu_offset = fdt_get_first_subnode(fdt, cpu_offset); cpu_offset >= 0;
        cpu_offset = fdt_get_next_subnode(fdt, cpu_offset)) {
-
+    // code ext: if explicit_nproc is given, the number of core is constrained.
+    if (cfg->explicit_nproc and cpu_idx >= cfg->nprocs()) {
+      break;
+    }
+    // code ext end
     if (!(cpu_map_offset < 0) && cpu_offset == cpu_map_offset)
       continue;
 
@@ -233,7 +238,7 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                     cfg, this, hartid, halted,
                                     log_file.get(), sout_));
     harts[hartid] = procs[cpu_idx];
-    // code ext beg
+    // code ext : record hartid and isa.
     hartid_to_idx_map[hartid] = cpu_idx;
     isa_string = isa_str;
     // code ext end
@@ -276,6 +281,9 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
     cpu_idx++;
   }
+  // code ext: print final cores count
+  std::cout << "Final cores count: " << procs.size() << std::endl;
+  // code ext end
 
   // must be located after procs/harts are set (devices might use sim_t get_* member functions)
   for (size_t i = 0; i < device_factories.size(); i++) {

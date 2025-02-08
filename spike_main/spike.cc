@@ -434,7 +434,7 @@ int main(int argc, char** argv)
 #ifdef HAVE_BOOST_ASIO
   parser.option('s', 0, 0, [&](const char UNUSED *s){socket = true;});
 #endif
-  parser.option('p', 0, 1, [&](const char* s){nprocs = atoul_nonzero_safe(s);});
+  parser.option('p', 0, 1, [&](const char* s){nprocs = atoul_nonzero_safe(s);cfg.explicit_nproc=true;/*code ext*/});
   parser.option('m', 0, 1, [&](const char* s){cfg.mem_layout = parse_mem_layout(s);});
   parser.option(0, "halted", 0, [&](const char UNUSED *s){halted = true;});
   parser.option(0, "rbb-port", 1, [&](const char* s){use_rbb = true; rbb_port = atoul_safe(s);});
