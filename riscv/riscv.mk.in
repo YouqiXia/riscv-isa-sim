@@ -52,6 +52,7 @@ riscv_install_hdrs = \
 	spikehooker.h \
 	ext_utils.h \
 	tools_module.h \
+	simpoint_module.h \
 
 riscv_precompiled_hdrs = \
 	insn_template.h \
@@ -86,6 +87,7 @@ riscv_srcs = \
 	rivai_uart.cc \
 	tools_module.cc \
 	sim_extension.cc \
+	simpoint_module.cc \
 
 riscv_test_srcs = \
   check-opcode-overlap.t.cc \

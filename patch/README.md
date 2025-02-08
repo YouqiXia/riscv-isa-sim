@@ -1,0 +1,1 @@
+This lib is interdependent with lib riscv which is cause compile error. to do: move interdependent code to riscv dir

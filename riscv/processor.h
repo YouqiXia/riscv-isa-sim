@@ -19,7 +19,7 @@
 #include "vector_unit.h"
 // rivai beg
 //// RiVAI: simpoint add --YC
-#include "../patch/simpoint_module.h"
+#include "simpoint_module.h"
 //// RiVAI: simpoint add end --YC
 // rivai end
 #define FIRST_HPMCOUNTER 3

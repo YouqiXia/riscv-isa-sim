@@ -23,10 +23,10 @@
 #include "../VERSION"
 // rivai beg
 //// RiVAI: simpoint add --YC
-#include "patch/simpoint_module.h"
+#include "simpoint_module.h"
 //// RiVAI: simpoint add end --YC
 #include "riscv/easy_args.h"
-#include "patch/endflag.h"
+#include "endflag.h"
 void decodeHook(void*, uint64_t, uint64_t) {}
 bool commitHook(){ return false; }
 uint64_t getNpcHook(uint64_t npc) {return npc;}

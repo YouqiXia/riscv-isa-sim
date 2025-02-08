@@ -10,7 +10,7 @@
 #include "processor.h"
 #include "simif.h"
 //// RiVAI: simpoint add --YC
-#include "../patch/simpoint_module.h"
+#include "simpoint_module.h"
 //// RiVAI: simpoint add end --YC
 
 #include <fesvr/htif.h>
