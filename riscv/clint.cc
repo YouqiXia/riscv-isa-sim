@@ -112,9 +112,19 @@ void clint_t::tick(reg_t rtc_ticks)
 
   for (const auto& [hart_id, hart] : sim->get_harts()) {
     hart->state.time->sync(mtime);
-    hart->state.mip->backdoor_write_with_mask(MIP_MTIP, mtime >= mtimecmp[hart_id] ? MIP_MTIP : 0);
+    hart->state.mip->backdoor_write_with_mask(MIP_MTIP, (mtime >= mtimecmp[hart_id] and not sim->deep_ctrl/*code ext*/) ? MIP_MTIP : 0);
   }
 }
+
+// code ext: Add functions to support sync mtime
+uint64_t clint_t::sync(reg_t time) {
+  if (not real_time) {
+    mtime = time;
+  }
+  tick(0);
+  return mtime;
+}
+// code ext end
 
 clint_t* clint_parse_from_fdt(const void* fdt, const sim_t* sim, reg_t* base,
     const std::vector<std::string>& UNUSED sargs) {

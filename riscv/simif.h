@@ -34,6 +34,9 @@ public:
   unsigned nprocs() const { return get_cfg().nprocs(); }
 
   mmu_t* debug_mmu;  // debug port into main memory, for use by debug_module
+  // code ext beg
+  bool deep_ctrl = false; // ctrl flag, in order to deep control spike behavior.
+  // code ext end
 };
 
 #endif

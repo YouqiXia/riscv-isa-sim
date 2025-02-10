@@ -871,8 +871,20 @@ void sim_t::interactive_dumpmems(const std::string& cmd, const std::vector<std::
 void sim_t::interactive_mtime(const std::string& cmd, const std::vector<std::string>& args)
 {
   std::ostream out(sout_.rdbuf());
-  out << std::hex << std::setfill('0') << "0x" << std::setw(16)
-      << clint->get_mtime() << std::endl;
+  // code ext: Support mtime modification
+  if (args.size() > 1) {
+    throw trap_interactive();
+  }
+
+  if (args.size() == 0) {
+    out << std::hex << std::setfill('0') << "0x" << std::setw(16)
+        << clint->get_mtime() << std::endl;
+  } else {
+    reg_t time = strtoull(args[0].c_str(),NULL,16);
+
+    out << std::hex << std::setfill('0') << "0x" << std::setw(16)
+      << clint->sync(time) << std::endl;
+  }
 }
 
 void sim_t::interactive_mtimecmp(const std::string& cmd, const std::vector<std::string>& args)

@@ -73,6 +73,9 @@ class clint_t : public abstract_device_t {
   void tick(reg_t rtc_ticks) override;
   uint64_t get_mtimecmp(reg_t hartid) { return mtimecmp[hartid]; }
   uint64_t get_mtime() { return mtime; }
+  // code ext: Add functions to support sync mtime
+  uint64_t sync(reg_t time);
+  // code ext end
  private:
   typedef uint64_t mtime_t;
   typedef uint64_t mtimecmp_t;
