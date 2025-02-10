@@ -3,8 +3,6 @@
 
 #include "v_ext_macros.h"
 
-#include "easy_args.h"
-
 #define MAX(x, y) (x >= y ? x : y)
 
 #define V_FILL_ONE \
