@@ -225,6 +225,7 @@ public:
   // code extension beg
 public:
   void interactive_extension(const std::string& cmd, const std::vector<std::string>& args);
+  void interactive_mcycle(const std::string& cmd, const std::vector<std::string>& args);
 
   void set_current_proc(size_t proc);
   struct {

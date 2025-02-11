@@ -296,6 +296,7 @@ void sim_t::interactive()
   funcs["help"] = &sim_t::interactive_help;
   funcs["h"] = funcs["help"];
   funcs["extension"] = &sim_t::interactive_extension;
+  funcs["mcycle"] = &sim_t::interactive_mcycle;
 
   while (!done())
   {
@@ -403,6 +404,9 @@ void sim_t::interactive_help(const std::string& cmd, const std::vector<std::stri
     "q                                 Alias for quit\n"
     "help                            # This screen!\n"
     "h                                 Alias for help\n"
+    // code ext beg
+    "mcycle <core> [val]             # Print or modify mcycle of <core>\n"
+    // code ext end
     "Note: Hitting enter is the same as: run 1"
     << std::endl;
 }
@@ -879,12 +883,12 @@ void sim_t::interactive_mtime(const std::string& cmd, const std::vector<std::str
   if (args.size() == 0) {
     out << std::hex << std::setfill('0') << "0x" << std::setw(16)
         << clint->get_mtime() << std::endl;
-  } else {
+  } else { // code ext: modify mtime
     reg_t time = strtoull(args[0].c_str(),NULL,16);
 
     out << std::hex << std::setfill('0') << "0x" << std::setw(16)
       << clint->sync(time) << std::endl;
-  }
+  } // code ext end
 }
 
 void sim_t::interactive_mtimecmp(const std::string& cmd, const std::vector<std::string>& args)
@@ -898,6 +902,7 @@ void sim_t::interactive_mtimecmp(const std::string& cmd, const std::vector<std::
       << clint->get_mtimecmp(p->get_id()) << std::endl;
 }
 
+// code ext beg
 void sim_t::interactive_extension(const std::string& cmd, const std::vector<std::string>& args)
 {
   if (args.size() < 1)
@@ -960,3 +965,18 @@ void sim_t::interactive_extension(const std::string& cmd, const std::vector<std:
     throw trap_interactive();
   }
 }
+
+void sim_t::interactive_mcycle(const std::string& cmd, const std::vector<std::string>& args) {
+  if (args.size() < 1 or args.size() > 2)
+    throw trap_interactive();
+
+  std::ostream out(sout_.rdbuf());
+  processor_t *p = get_core(args[0]);
+  if (args.size() == 2) {
+    auto mcycle_val = strtoull(args[1].c_str(),NULL,16);;
+    p->get_state()->mcycle->write(mcycle_val);
+  }
+  out << std::hex << std::setfill('0') << "0x" << std::setw(16)
+      << p->get_state()->mcycle->read() << std::endl;
+}
+// code ext end
