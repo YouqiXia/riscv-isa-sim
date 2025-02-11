@@ -3,56 +3,78 @@
 
 #include "v_ext_macros.h"
 
+#include <limits>
+
 #define MAX(x, y) (x >= y ? x : y)
 
-#define V_FILL_ONE \
-    for (reg_t i = 0; i < sew; ++i) { \
-      vd |= 1 << i; \
-    }
+#define V_FILL_ONE (vd |= std::numeric_limits<uint64_t>::max());
+
+#define VF_FILL_ONE \
+  switch (sizeof(vd)) { \
+    case 8: \
+    *(uint8_t*)&vd |= std::numeric_limits<uint64_t>::max(); \
+    break; \
+    case 16: \
+    *(uint16_t*)&vd |= std::numeric_limits<uint64_t>::max(); \
+    break; \
+    case 32: \
+    *(uint32_t*)&vd |= std::numeric_limits<uint64_t>::max(); \
+    break; \
+    case 64: \
+    default: \
+    *(uint64_t*)&vd |= std::numeric_limits<uint64_t>::max(); \
+    break; \
+  }
 
 #define V_HANDLE_MASK(BODY) \
-  if (g_easy_args.vmaskone) { \
-    if (sew == e8) { \
-      BODY(e8); \
-      V_FILL_ONE \
-    } else if (sew == e16) { \
-      BODY(e16); \
-      V_FILL_ONE \
-    } else if (sew == e32) { \
-      BODY(e32); \
-      V_FILL_ONE \
-    } else if (sew == e64) { \
-      BODY(e64); \
-      V_FILL_ONE \
-    } \
+  if (sew == e8) { \
+    BODY(e8); \
+    V_FILL_ONE \
+  } else if (sew == e16) { \
+    BODY(e16); \
+    V_FILL_ONE \
+  } else if (sew == e32) { \
+    BODY(e32); \
+    V_FILL_ONE \
+  } else if (sew == e64) { \
+    BODY(e64); \
+    V_FILL_ONE \
   }
 
 #define V_HANDLE_MASK_NARROW(BODY) \
-  if (g_easy_args.vmaskone) { \
-    if (sew == e8) { \
-      BODY(e8, e16); \
-      V_FILL_ONE \
-    } else if (sew == e16) { \
-      BODY(e16, e32); \
-      V_FILL_ONE \
-    } else if (sew == e32) { \
-      BODY(e32, e64); \
-      V_FILL_ONE \
-    } \
+  if (sew == e8) { \
+    BODY(e8, e16); \
+    V_FILL_ONE \
+  } else if (sew == e16) { \
+    BODY(e16, e32); \
+    V_FILL_ONE \
+  } else if (sew == e32) { \
+    BODY(e32, e64); \
+    V_FILL_ONE \
   }
 
 #define V_HANDLE_MASK_WIDEN(BODY) \
-  if (g_easy_args.vmaskone) { \
-    if (sew == e8) { \
-      BODY(e8); \
-      V_FILL_ONE \
-    } else if (sew == e16) { \
-      BODY(e16); \
-      V_FILL_ONE \
-    } else if (sew == e32) { \
-      BODY(e32); \
-      V_FILL_ONE \
-    } \
+  if (sew == e8) { \
+    BODY(e8); \
+    V_FILL_ONE \
+  } else if (sew == e16) { \
+    BODY(e16); \
+    V_FILL_ONE \
+  } else if (sew == e32) { \
+    BODY(e32); \
+    V_FILL_ONE \
+  }
+
+#define V_HANDLE_MASK_VF_MERGE(BODY) \
+  if (P.VU.vsew == e16) { \
+    BODY(16); \
+    VF_FILL_ONE \
+  } else if (P.VU.vsew == e32) { \
+    BODY(32); \
+    VF_FILL_ONE \
+  } else if (P.VU.vsew == e64) { \
+    BODY(64); \
+    VF_FILL_ONE \
   }
 
 #define SE_VI_LOOP_ELEMENT_SKIP(BODY1, BODY2) \
@@ -80,8 +102,10 @@
   VI_LOOP_END_BASE
 
 #define V_HANDLE_TAIL(BODY1, BODY2) \
-  for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.ELEN); ++i) { \
-    BODY1(BODY2) \
+  if (g_easy_args.vmaskone) { \
+    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.ELEN); ++i) { \
+      BODY1(BODY2) \
+    } \
   } \
   P.VU.vstart->write(0);
 
@@ -435,6 +459,93 @@
   } \
   SE_VI_LOOP_END \
   V_HANDLE_TAIL(V_HANDLE_MASK_WIDEN, VX_PARAMS)
+#endif
+
+#ifdef VI_VV_MERGE_LOOP
+#undef VI_VV_MERGE_LOOP
+#define VI_VV_MERGE_LOOP(BODY) \
+  VI_CHECK_SSS(true); \
+  VI_MERGE_LOOP_BASE \
+  if (sew == e8) { \
+    VV_PARAMS(e8); \
+    BODY; \
+  } else if (sew == e16) { \
+    VV_PARAMS(e16); \
+    BODY; \
+  } else if (sew == e32) { \
+    VV_PARAMS(e32); \
+    BODY; \
+  } else if (sew == e64) { \
+    VV_PARAMS(e64); \
+    BODY; \
+  } \
+  SE_VI_LOOP_END \
+  V_HANDLE_TAIL(V_HANDLE_MASK, VV_PARAMS)
+#endif
+
+#ifdef VI_VX_MERGE_LOOP
+#undef VI_VX_MERGE_LOOP
+#define VI_VX_MERGE_LOOP(BODY) \
+  VI_CHECK_SSS(false); \
+  VI_MERGE_LOOP_BASE \
+  if (sew == e8) { \
+    VX_PARAMS(e8); \
+    BODY; \
+  } else if (sew == e16) { \
+    VX_PARAMS(e16); \
+    BODY; \
+  } else if (sew == e32) { \
+    VX_PARAMS(e32); \
+    BODY; \
+  } else if (sew == e64) { \
+    VX_PARAMS(e64); \
+    BODY; \
+  } \
+  SE_VI_LOOP_END \
+  V_HANDLE_TAIL(V_HANDLE_MASK, VX_PARAMS)
+#endif
+
+#ifdef VI_VI_MERGE_LOOP
+#undef VI_VI_MERGE_LOOP
+#define VI_VI_MERGE_LOOP(BODY) \
+  VI_CHECK_SSS(false); \
+  VI_MERGE_LOOP_BASE \
+  if (sew == e8) { \
+    VI_PARAMS(e8); \
+    BODY; \
+  } else if (sew == e16) { \
+    VI_PARAMS(e16); \
+    BODY; \
+  } else if (sew == e32) { \
+    VI_PARAMS(e32); \
+    BODY; \
+  } else if (sew == e64) { \
+    VI_PARAMS(e64); \
+    BODY; \
+  } \
+  SE_VI_LOOP_END \
+  V_HANDLE_TAIL(V_HANDLE_MASK, VI_PARAMS)
+#endif
+
+#ifdef VI_VF_MERGE_LOOP
+#undef VI_VF_MERGE_LOOP
+#define VI_VF_MERGE_LOOP(BODY) \
+  VI_CHECK_SSS(false); \
+  VI_VFP_COMMON \
+  for (reg_t i = P.VU.vstart->read(); i < vl; ++i) { \
+  VI_MERGE_VARS \
+  if (P.VU.vsew == e16) { \
+    VFP_VF_PARAMS(16); \
+    BODY; \
+  } else if (P.VU.vsew == e32) { \
+    VFP_VF_PARAMS(32); \
+    BODY; \
+  } else if (P.VU.vsew == e64) { \
+    VFP_VF_PARAMS(64); \
+    BODY; \
+  } \
+  SE_VI_LOOP_END \
+  V_HANDLE_TAIL(V_HANDLE_MASK_VF_MERGE, VFP_VF_PARAMS)
 #endif
 
 #define ELEMENT_SKIP ((insn.v_vm() == 0) && (((P.VU.elt<uint64_t>(0, i / 64) >> (i % 64)) & 0x1) == 0))
