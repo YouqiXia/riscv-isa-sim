@@ -357,67 +357,23 @@ int sim_t::run()
 
 void sim_t::step(size_t n)
 {
-  // code extension beg
-  if (g_easy_args.specify_proc) {
-    if (multi_proc_data.proc_current_steps.empty()) {
-      multi_proc_data.proc_current_steps.resize(procs.size(), 0);
-      multi_proc_data.proc_errs.resize(procs.size(), NO_ERR);
-    }
-    multi_proc_data.proc_errs[current_proc] = NO_ERR;
-    current_step = multi_proc_data.proc_current_steps[current_proc];
-    if (current_step >= INTERLEAVE) {
-      multi_proc_data.proc_errs[current_proc] = WAIT_TICK;
-      return;
-    }
-  }
-  // code extension end
   for (size_t i = 0, steps = 0; i < n; i += steps)
   {
     steps = std::min(n - i, INTERLEAVE - current_step);
     procs[current_proc]->step(steps);
 
     current_step += steps;
-    // code extension beg
-    if (g_easy_args.specify_proc) {
-      multi_proc_data.proc_current_steps[current_proc] = current_step;
-      multi_proc_data.steps_sum += steps;
-      if (current_step == INTERLEAVE) {
-        // procs[current_proc]->get_mmu()->yield_load_reservation(); // disable it because of alignment with rtl.
-      }
-      if (multi_proc_data.steps_sum == procs.size() * INTERLEAVE) {
-        for (auto &step_num : multi_proc_data.proc_current_steps) {
-          step_num = 0;
-        }
-        multi_proc_data.steps_sum = 0;
-        reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
-        bool keep_going = true;
-        if (procs[current_proc]->get_log_commits_enabled()) {
-          keep_going = continueHook();
-        }
-        if (keep_going) {
-          for (auto &dev : devices) dev->tick(rtc_ticks);
-        }
-
-        current_step = 0;
-        continue;
-      }
-      break;
-    }
-    // code extension end
     if (current_step == INTERLEAVE)
     {
       current_step = 0;
-      // procs[current_proc]->get_mmu()->yield_load_reservation(); // disable it because of alignment with rtl.
+      // procs[current_proc]->get_mmu()->yield_load_reservation(); // code ext: disable it because of alignment with rtl.
       if (++current_proc == procs.size()) {
         current_proc = 0;
-        reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
-        bool keep_going = true;
-        if (procs[current_proc]->get_log_commits_enabled()) {
-          keep_going = continueHook();
-        }
-        if (keep_going) {
-          for (auto &dev : devices) dev->tick(rtc_ticks);
-        }
+        // code ext: handle INTERLEAVE < INSNS_PER_RTC_TICK;
+        reg_t rtc_ticks = (INTERLEAVE + REMAINDER) / INSNS_PER_RTC_TICK;
+        REMAINDER = (INTERLEAVE + REMAINDER) % INSNS_PER_RTC_TICK;
+        // code ext end
+        for (auto &dev : devices) dev->tick(rtc_ticks);
       }
     }
   }
