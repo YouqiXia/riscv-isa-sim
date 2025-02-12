@@ -34,7 +34,7 @@ struct tint_arg_t : public eventbase_t {
 
 struct gbl_t : public eventbase_t {
   std::string serialization() const override {
-    char cmd[8];
+    char cmd[16];
     snprintf(cmd, sizeof(cmd), "mcc_gbl\n");
     return cmd;
   }

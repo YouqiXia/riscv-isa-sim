@@ -369,11 +369,31 @@ void sim_t::step(size_t n)
       // procs[current_proc]->get_mmu()->yield_load_reservation(); // code ext: disable it because of alignment with rtl.
       if (++current_proc == procs.size()) {
         current_proc = 0;
-        // code ext: handle INTERLEAVE < INSNS_PER_RTC_TICK;
-        reg_t rtc_ticks = (INTERLEAVE + REMAINDER) / INSNS_PER_RTC_TICK;
-        REMAINDER = (INTERLEAVE + REMAINDER) % INSNS_PER_RTC_TICK;
+        // code ext beg
+        // handle deepctrl
+        if (get_cfg().deepctrl) {
+          // handle INTERLEAVE < INSNS_PER_RTC_TICK
+          reg_t rtc_ticks = (INTERLEAVE + REMAINDER) / INSNS_PER_RTC_TICK;
+          REMAINDER = (INTERLEAVE + REMAINDER) % INSNS_PER_RTC_TICK;
+          // need to handle other devices?
+          for (auto &dev : devices) {
+            if (auto clint = dynamic_cast<clint_t*>(dev.get())) {
+              clint->tick(0);
+            } else {
+              dev->tick(rtc_ticks);
+            }
+          }
+        } else {
+          reg_t rtc_ticks = INTERLEAVE / INSNS_PER_RTC_TICK;
+          bool keep_going = true;
+          if (procs[current_proc]->get_log_commits_enabled()) {
+            keep_going = continueHook();
+          }
+          if (keep_going) {
+            for (auto &dev : devices) dev->tick(rtc_ticks);
+          }
+        }
         // code ext end
-        for (auto &dev : devices) dev->tick(rtc_ticks);
       }
     }
   }

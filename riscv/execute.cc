@@ -455,9 +455,10 @@ void processor_t::step(size_t n)
       state.minstret->bump(instret);
 
     // Model a hart whose CPI is 1.
-    if (!(state.mcountinhibit->read() & MCOUNTINHIBIT_CY))
+    // code ext: if use external time, no need to bump mcycle
+    if (!(state.mcountinhibit->read() & MCOUNTINHIBIT_CY) and not get_cfg().deepctrl)
       state.mcycle->bump(instret);
-
+    // code ext end
     n -= instret;
   }
 }

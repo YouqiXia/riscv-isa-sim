@@ -112,7 +112,7 @@ void clint_t::tick(reg_t rtc_ticks)
 
   for (const auto& [hart_id, hart] : sim->get_harts()) {
     hart->state.time->sync(mtime);
-    hart->state.mip->backdoor_write_with_mask(MIP_MTIP, (mtime >= mtimecmp[hart_id] and not sim->deep_ctrl/*code ext*/) ? MIP_MTIP : 0);
+    hart->state.mip->backdoor_write_with_mask(MIP_MTIP, (mtime >= mtimecmp[hart_id] and not sim->get_cfg().deepctrl/*code ext*/) ? MIP_MTIP : 0);
   }
 }
 

@@ -81,6 +81,7 @@ public:
   size_t                  interleave = 0; // code ext: for controlling core switch when running, disabled by default.
   bool                    disable_host = false; // code ext: whether communicate with host.
   bool                    explicit_nproc = false; // code ext: whether -p=<n> is given.
+  mutable bool            deepctrl = false; //code ext: for spike deepctrl.
 
   size_t nprocs() const { return hartids.size(); }
   size_t max_hartid() const { return hartids.back(); }

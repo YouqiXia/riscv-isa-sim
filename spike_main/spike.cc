@@ -27,6 +27,7 @@
 //// RiVAI: simpoint add end --YC
 #include "riscv/easy_args.h"
 #include "endflag.h"
+#include "option_configure_ext.h"
 void decodeHook(void*, uint64_t, uint64_t) {}
 bool commitHook(){ return false; }
 uint64_t getNpcHook(uint64_t npc) {return npc;}
@@ -141,6 +142,7 @@ static void help(int exit_code = 1)
   fprintf(stderr, "  --vmaskone            If this is provided, then the vector destination will be overwritten with 1s,\n");
   fprintf(stderr, "                         otherwise the value they previously held are retained\n");
   fprintf(stderr, "  --step=<interleave>   Set interleave for step in spike simulation\n");
+  OPTION_HELP_PRINT
 // rivai end
   exit(exit_code);
 }
@@ -598,6 +600,7 @@ int main(int argc, char** argv)
     }
   });
   //// RiVAI: simpoint parameters add end --YC
+  option_configure_ext(parser, cfg);
   // rivai end
   auto argv1 = parser.parse(argv);
   std::vector<std::string> htif_args(argv1, (const char*const*)argv + argc);
