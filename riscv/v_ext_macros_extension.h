@@ -109,6 +109,15 @@
   } \
   P.VU.vstart->write(0);
 
+#define V_HANDLE_TAIL_SPECIAL(BODY1, BODY2) \
+  if (g_easy_args.vmaskone) { \
+    auto rd_num = insn.rd(); \
+    auto sew = P.VU.vsew; \
+    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.ELEN); ++i) { \
+      BODY1(BODY2) \
+    } \
+  }
+
 // genearl VXI signed/unsigned loop
 #ifdef VI_VV_ULOOP
 #undef VI_VV_ULOOP

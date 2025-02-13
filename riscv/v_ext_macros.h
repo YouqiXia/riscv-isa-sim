@@ -486,6 +486,11 @@ static inline bool is_overlapped_widen(const int astart, int asize,
   auto vs2 = P.VU.elt<float##from_width##_t>(rs2_num, i); \
   auto &vd = P.VU.elt<sign##to_width##_t>(rd_num, i, true);
 
+// code ext beg
+#define EXT_GET_VD(x) \
+  type_sew_t<x>::type &vd = P.VU.elt<type_sew_t<x>::type>(rd_num, i, true);
+// code ext end
+
 //
 // vector: integer and masking operation loop
 //
