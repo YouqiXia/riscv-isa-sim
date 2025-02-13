@@ -378,6 +378,7 @@ void sim_t::interactive_help(const std::string& cmd, const std::vector<std::stri
     "fregs <core> <reg>              # Display single precision <reg> in <core>\n"
     "fregd <core> <reg>              # Display double precision <reg> in <core>\n"
     "vreg <core> [reg]               # Display vector [reg] (all if omitted) in <core>\n"
+    "vreg <core> <reg> <elm> <hval>  # Set vector [reg] hex value in <core> <reg> <elm>\n" /*code ext*/
     "pc <core>                       # Show current PC in <core>\n"
     "insn <core>                     # Show current instruction corresponding to PC in <core>\n"
     "priv <core>                     # Show current privilege level in <core>\n"
@@ -578,6 +579,48 @@ void sim_t::interactive_vreg(const std::string& cmd, const std::vector<std::stri
   }
 
   std::ostream out(sout_.rdbuf());
+
+  // code ext: set vector reg val
+  if (args.size() == 4) {
+    int r = rstart;
+    int e = strtol(args[2].c_str(), NULL, 0);
+    uint64_t setval = strtoull(args[3].c_str(), NULL, 16);
+    processor_t *p = get_core(args[0]);
+    if (p->any_vector_extensions()) {
+      const int vlen = (int)(p->VU.get_vlen()) >> 3;
+      const int elen = (int)(p->VU.get_elen()) >> 3;
+      const int num_elem = vlen/elen;
+
+      switch (elen) {
+        case 8:
+          {
+            auto &val = p->VU.elt<uint64_t>(r, e);
+            val = setval;
+          }
+          break;
+        case 4:
+          {
+            auto &val = p->VU.elt<uint32_t>(r, e);
+            val = setval;
+          }
+          break;
+        case 2:
+          {
+            auto &val = p->VU.elt<uint16_t>(r, e);
+            val = setval;
+          }
+          break;
+        case 1:
+          {
+            auto &val = p->VU.elt<uint8_t>(r, e);
+            val = setval;
+          }
+          break;
+      }
+    }
+    return;
+  }
+  // code ext end
 
   // Show all the regs!
   processor_t *p = get_core(args[0]);
