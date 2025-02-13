@@ -4,6 +4,8 @@ patch_hdrs = \
 	gprof_elf_symbol_loader.h \
 	gprof_struct_define.h \
 	endflag.h \
+	events/eventbase.h \
+	events/events.h \
 
 patch_srcs = \
 	prof_module.cc \

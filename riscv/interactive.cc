@@ -295,8 +295,8 @@ void sim_t::interactive()
   funcs["q"] = funcs["quit"];
   funcs["help"] = &sim_t::interactive_help;
   funcs["h"] = funcs["help"];
-  funcs["extension"] = &sim_t::interactive_extension;
-  funcs["mcycle"] = &sim_t::interactive_mcycle;
+  funcs["csr"] = &sim_t::interactive_csr;
+  funcs["tint"] = &sim_t::interactive_tint;
 
   while (!done())
   {
@@ -406,7 +406,8 @@ void sim_t::interactive_help(const std::string& cmd, const std::vector<std::stri
     "help                            # This screen!\n"
     "h                                 Alias for help\n"
     // code ext beg
-    "mcycle <core> [val]             # Print or modify mcycle of <core>\n"
+    "csr <core> <type> [val]         # Modify the csr of given <type> in <core> with [val] or just print it\n"
+    "tint <core>                     # Trigger mtime interrupt\n"
     // code ext end
     "Note: Hitting enter is the same as: run 1"
     << std::endl;
@@ -946,80 +947,28 @@ void sim_t::interactive_mtimecmp(const std::string& cmd, const std::vector<std::
 }
 
 // code ext beg
-void sim_t::interactive_extension(const std::string& cmd, const std::vector<std::string>& args)
-{
-  if (args.size() < 1)
+void sim_t::interactive_csr(const std::string& cmd, const std::vector<std::string>& args) {
+  if (args.size() < 2 or args.size() > 3)
     throw trap_interactive();
 
-  std::string split_code = "------";
-
-  if (args[0] == "all") {
-    std::string child_cmd;
-    std::vector<std::string> child_args;
-    {
-      child_cmd.clear();
-      child_args.clear();
-      child_cmd = "pc";
-      child_args.push_back(args[1]);
-      interactive_pc(child_cmd, child_args);
-    }
-
-    sout_ << split_code << '\n';
-    auto get_all_reg = [&]() {
-      child_cmd.clear();
-      child_args.clear();
-      child_cmd = "reg";
-      child_args.push_back(args[1]);
-      interactive_reg(child_cmd, child_args);
-    };
-    get_all_reg();
-
-    sout_ << split_code << '\n';
-    auto get_all_vreg = [&]() {
-      child_cmd.clear();
-      child_args.clear();
-      child_cmd = "vreg";
-      child_args.push_back(args[1]);
-      interactive_vreg(child_cmd, child_args);
-    };
-    get_all_vreg();
-
-    sout_ << split_code << '\n';
-    auto get_all_freg = [&]() {
-      child_cmd.clear();
-      child_args.clear();
-      child_cmd = "freg";
-      child_args.push_back(args[1]);
-      for (size_t i = 0; i < 32; ++i) {
-        child_args.push_back(std::to_string(i));
-        interactive_freg(child_cmd, child_args);
-        child_args.pop_back();
-      }
-    };
-    get_all_freg();
-  } else if (args[0] == "multi-proc") {
-    g_easy_args.specify_proc = true;
-    sout_ << "set multi-proc\n";
-  } else if (args[0] == "step") {
-    set_procs_debug(true);
-    set_current_proc(std::stoull(args[1]));
-    step(1);
-  } else {
-    throw trap_interactive();
-  }
-}
-
-void sim_t::interactive_mcycle(const std::string& cmd, const std::vector<std::string>& args) {
-  if (args.size() < 1 or args.size() > 2)
-    throw trap_interactive();
-
-  std::ostream out(sout_.rdbuf());
   processor_t *p = get_core(args[0]);
-  if (args.size() == 2) {
-    auto mcycle_val = strtoull(args[1].c_str(),NULL,16);;
+  std::ostream out(sout_.rdbuf());
+
+  auto csr_type = std::stoul(args[1]);
+  // for now only support mcycle
+  if (args.size() == 3) {
+    auto mcycle_val = std::strtoull(args[2].c_str(),NULL,16);;
     p->get_state()->mcycle->write(mcycle_val);
   }
   out << std::hex << std::setfill('0') << "0x" << std::setw(16)
       << p->get_state()->mcycle->read() << std::endl;
+}
+
+void sim_t::interactive_tint(const std::string& cmd, const std::vector<std::string>& args) {
+  if (args.size() != 1)
+    throw trap_interactive();
+
+  processor_t *p = get_core(args[0]);
+  p->get_state()->mip->backdoor_write_with_mask(MIP_MTIP, MIP_MTIP);
 }
 // code ext end
