@@ -193,7 +193,18 @@ inline void processor_t::update_histogram(reg_t pc)
 // These two functions are expected to be inlined by the compiler separately in
 // the processor_t::step() loop. The logged variant is used in the slow path
 static inline reg_t execute_insn_fast(processor_t* p, reg_t pc, insn_fetch_t fetch) {
-  return fetch.func(p, fetch.insn, pc);
+  // code ext: support log commits in fast mode
+  if (p->get_log_commits_enabled()) {
+    commit_log_reset(p);
+    commit_log_stash_privilege(p);
+  }
+  reg_t npc = fetch.func(p, fetch.insn, pc);
+  if (p->get_log_commits_enabled()) {
+    HOOK_EXEC(onExecInsn, &fetch, pc, 0);
+    commitHook();
+  }
+  return npc;
+  // code ext end
 }
 static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t fetch)
 {
@@ -276,6 +287,7 @@ void processor_t::step(size_t n)
     }
   }
 
+  size_t prev_instret = ~size_t(0); // code ext: use prev_instret to determine if actually stepped
   while (n > 0) {
     size_t instret = 0;
     reg_t pc = state.pc;
@@ -375,6 +387,10 @@ void processor_t::step(size_t n)
             this->simpoint_module->simpoint_step(1);
           }
           //// RiVAI: simpoint add end --YC
+          if (instret == prev_instret) {
+            HOOK_EXEC(onHandleFakeStep, instret, prev_instret);
+          }
+          prev_instret = instret;
 // rivai end
           auto fetch = ic_entry->data;
           pc = execute_insn_fast(this, pc, fetch);

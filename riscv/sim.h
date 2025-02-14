@@ -249,6 +249,13 @@ public:
     }
   }
   bool get_log_commits_enabled() const { return log_commits_enabled; }
+  void set_fast_log_commits(bool val) {
+    is_fast_log_commits = val;
+    for (processor_t *proc : procs) {
+      proc->set_fast_log_commits(val);
+    }
+  }
+  bool get_fast_log_commits() const { return is_fast_log_commits; }
 
   void set_interleave(size_t val) { INTERLEAVE = val; }
   size_t hartid_to_idx(size_t cid) const;
@@ -280,6 +287,7 @@ private:
 
   std::unordered_map<size_t, size_t> hartid_to_idx_map;
   bool log_commits_enabled = false;
+  bool is_fast_log_commits = false;
   // code extension end
 };
 

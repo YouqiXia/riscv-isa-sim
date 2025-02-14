@@ -49,6 +49,7 @@ public:
   static void exit(int code);
 
   virtual void onExecInsn(insn_fetch_t* in, uint64_t pc, uint64_t npc) {}
+  virtual void onHandleFakeStep(size_t curr_instret, size_t prev_instret) {}
 
 protected:
   int cid_ = 0;
