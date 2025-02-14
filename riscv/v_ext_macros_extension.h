@@ -27,54 +27,62 @@
   }
 
 #define V_HANDLE_MASK(BODY) \
-  if (sew == e8) { \
-    BODY(e8); \
-    V_FILL_ONE \
-  } else if (sew == e16) { \
-    BODY(e16); \
-    V_FILL_ONE \
-  } else if (sew == e32) { \
-    BODY(e32); \
-    V_FILL_ONE \
-  } else if (sew == e64) { \
-    BODY(e64); \
-    V_FILL_ONE \
+  if (g_easy_args.vmaskone) { \
+    if (sew == e8) { \
+      BODY(e8); \
+      V_FILL_ONE \
+    } else if (sew == e16) { \
+      BODY(e16); \
+      V_FILL_ONE \
+    } else if (sew == e32) { \
+      BODY(e32); \
+      V_FILL_ONE \
+    } else if (sew == e64) { \
+      BODY(e64); \
+      V_FILL_ONE \
+    } \
   }
 
 #define V_HANDLE_MASK_NARROW(BODY) \
-  if (sew == e8) { \
-    BODY(e8, e16); \
-    V_FILL_ONE \
-  } else if (sew == e16) { \
-    BODY(e16, e32); \
-    V_FILL_ONE \
-  } else if (sew == e32) { \
-    BODY(e32, e64); \
-    V_FILL_ONE \
+  if (g_easy_args.vmaskone) { \
+    if (sew == e8) { \
+      BODY(e8, e16); \
+      V_FILL_ONE \
+    } else if (sew == e16) { \
+      BODY(e16, e32); \
+      V_FILL_ONE \
+    } else if (sew == e32) { \
+      BODY(e32, e64); \
+      V_FILL_ONE \
+    } \
   }
 
 #define V_HANDLE_MASK_WIDEN(BODY) \
-  if (sew == e8) { \
-    BODY(e8); \
-    V_FILL_ONE \
-  } else if (sew == e16) { \
-    BODY(e16); \
-    V_FILL_ONE \
-  } else if (sew == e32) { \
-    BODY(e32); \
-    V_FILL_ONE \
+  if (g_easy_args.vmaskone) { \
+    if (sew == e8) { \
+      BODY(e8); \
+      V_FILL_ONE \
+    } else if (sew == e16) { \
+      BODY(e16); \
+      V_FILL_ONE \
+    } else if (sew == e32) { \
+      BODY(e32); \
+      V_FILL_ONE \
+    } \
   }
 
 #define V_HANDLE_MASK_VF_MERGE(BODY) \
-  if (P.VU.vsew == e16) { \
-    BODY(16); \
-    VF_FILL_ONE \
-  } else if (P.VU.vsew == e32) { \
-    BODY(32); \
-    VF_FILL_ONE \
-  } else if (P.VU.vsew == e64) { \
-    BODY(64); \
-    VF_FILL_ONE \
+  if (g_easy_args.vmaskone) { \
+    if (P.VU.vsew == e16) { \
+      BODY(16); \
+      VF_FILL_ONE \
+    } else if (P.VU.vsew == e32) { \
+      BODY(32); \
+      VF_FILL_ONE \
+    } else if (P.VU.vsew == e64) { \
+      BODY(64); \
+      VF_FILL_ONE \
+    } \
   }
 
 #define SE_VI_LOOP_ELEMENT_SKIP(BODY1, BODY2) \
