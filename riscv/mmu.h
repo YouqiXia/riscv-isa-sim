@@ -89,7 +89,7 @@ public:
 // rivai beg
     if (!continueHook()) {
       // log mem read info when no continue
-      if (unlikely(proc && proc->get_log_commits_enabled())) {
+      if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem()))) {
         reg_t paddr = translate(generate_access_info(addr, LOAD, {}), sizeof(T));
         proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T), paddr));
       }
@@ -106,7 +106,7 @@ public:
       load_slow_path(addr, sizeof(T), (uint8_t*)&res, xlate_flags);
     }
 // rivai beg
-    if (unlikely(proc && proc->get_log_commits_enabled())) {
+    if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem()))) {
       reg_t paddr = translate(generate_access_info(addr, LOAD, {}), sizeof(T));
       proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T), paddr));
     }
@@ -140,7 +140,7 @@ public:
   template<typename T>
   void ALWAYS_INLINE store(reg_t addr, T val, xlate_flags_t xlate_flags = {}, bool skipExe = false/*rivai*/) {
 // rivai beg
-    if (unlikely(proc && proc->get_log_commits_enabled())) {
+    if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem()))) {
       reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
       proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
     }
@@ -173,7 +173,7 @@ public:
       store_slow_path(addr, sizeof(T), (const uint8_t*)&target_val, xlate_flags, true, false);
     }
 // rivai beg
-    if (unlikely(proc && proc->get_log_commits_enabled()) and not BACKUP_BOOL(getDummyStored)){
+    if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem())) and not BACKUP_BOOL(getDummyStored)){
       // reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
       // proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
       *real_store = true;

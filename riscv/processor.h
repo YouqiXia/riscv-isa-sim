@@ -478,11 +478,14 @@ public:
   void set_log_commits(bool val) { log_commits_enabled = val; }
   void set_fast_log_commits(bool val) { fast_log_commits = val; }
   bool get_fast_log_commits() const { return fast_log_commits; }
+  void set_fast_log_mem(bool val) { fast_log_mem = val; }
+  bool is_fast_log_mem() const { return fast_log_mem and fast_log_commits; }
 
   void dummy_step(size_t n);
 
 private:
   bool fast_log_commits = false;
+  bool fast_log_mem = false;
 // code ext end
 };
 

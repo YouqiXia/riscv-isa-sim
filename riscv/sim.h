@@ -256,6 +256,11 @@ public:
     }
   }
   bool get_fast_log_commits() const { return is_fast_log_commits; }
+  void set_fast_log_mem(bool val) {
+    for (processor_t *proc : procs) {
+      proc->set_fast_log_mem(val);
+    }
+  }
 
   void set_interleave(size_t val) { INTERLEAVE = val; }
   size_t hartid_to_idx(size_t cid) const;

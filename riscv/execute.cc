@@ -63,7 +63,7 @@ static void commit_log_print_value(FILE *log_file, int width, uint64_t val)
 static void commit_log_print_insn(processor_t *p, reg_t pc, insn_t insn)
 {
 // rivai beg
-  if (p->get_log_commits_enabled() && commitHook()) {
+  if ((p->get_log_commits_enabled() or p->get_fast_log_commits()) && commitHook()) {
     return;
   }
 // rivai end
@@ -194,12 +194,12 @@ inline void processor_t::update_histogram(reg_t pc)
 // the processor_t::step() loop. The logged variant is used in the slow path
 static inline reg_t execute_insn_fast(processor_t* p, reg_t pc, insn_fetch_t fetch) {
   // code ext: support log commits in fast mode
-  if (p->get_log_commits_enabled()) {
+  if (p->get_fast_log_commits()) {
     commit_log_reset(p);
     commit_log_stash_privilege(p);
   }
   reg_t npc = fetch.func(p, fetch.insn, pc);
-  if (p->get_log_commits_enabled()) {
+  if (p->get_fast_log_commits()) {
     HOOK_EXEC(onExecInsn, &fetch, pc, 0);
     commitHook();
   }
@@ -208,7 +208,7 @@ static inline reg_t execute_insn_fast(processor_t* p, reg_t pc, insn_fetch_t fet
 }
 static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t fetch)
 {
-  if (p->get_log_commits_enabled()) {
+  if (p->get_log_commits_enabled() or p->get_fast_log_commits()) {
     commit_log_reset(p);
     commit_log_stash_privilege(p);
   }
@@ -218,7 +218,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
   try {
     npc = fetch.func(p, fetch.insn, pc);
   // rivai beg
-    if (p && p->get_log_commits_enabled()) {
+    if (p->get_log_commits_enabled() or p->get_fast_log_commits()) {
       decodeHook(&fetch, pc, npc);
       HOOK_EXEC(onExecInsn, &fetch, pc, npc);
     }
@@ -230,7 +230,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
      }
   } catch (wait_for_interrupt_t &t) {
   // rivai beg
-    if (p && p->get_log_commits_enabled()) {
+    if (p->get_log_commits_enabled() or p->get_fast_log_commits()) {
       HOOK_EXEC(onExecInsn, &fetch, pc, 0);
     }
   // rivai end
@@ -240,7 +240,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
       throw;
   } catch(mem_trap_t& t) {
   // rivai beg
-    if (p && p->get_log_commits_enabled()) {
+    if (p->get_log_commits_enabled() or p->get_fast_log_commits()) {
       HOOK_EXEC(onExecInsn, &fetch, pc, 0);
     }
   // rivai end
@@ -256,7 +256,7 @@ static inline reg_t execute_insn_logged(processor_t* p, reg_t pc, insn_fetch_t f
       throw;
   } catch(...) {
   // rivai beg
-    if (p && p->get_log_commits_enabled()) {
+    if (p->get_log_commits_enabled() or p->get_fast_log_commits()) {
       HOOK_EXEC(onExecInsn, &fetch, pc, 0);
     }
   // rivai end
