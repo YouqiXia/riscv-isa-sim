@@ -365,7 +365,7 @@ public:
 
     insn_fetch_t fetch = {proc->decode_insn(insn), insn};
     // code ext beg
-    if (proc && proc->get_log_commits_enabled()) {
+    if (proc && (proc->get_log_commits_enabled() or proc->get_fast_log_commits())) {
       fetch.pc_ppn = tlb_entry.target_offset + addr;
     }
     // code ext end
