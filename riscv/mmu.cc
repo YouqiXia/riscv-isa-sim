@@ -7,6 +7,10 @@
 #include "processor.h"
 #include "decode_macros.h"
 
+// code ext beg
+#include "mem_event_ctrl.h"
+// code ext end
+
 mmu_t::mmu_t(simif_t* sim, endianness_t endianness, processor_t* proc)
  : sim(sim), proc(proc),
 #ifdef RISCV_ENABLE_DUAL_ENDIAN
@@ -213,28 +217,26 @@ void mmu_t::load_slow_path_intrapage(reg_t len, uint8_t* bytes, mem_access_info_
   reg_t addr = access_info.vaddr;
   reg_t transformed_addr = access_info.transformed_vaddr;
   reg_t vpn = transformed_addr >> PGSHIFT;
-  if (not BACKUP_ON and !access_info.flags.is_special_access() && vpn == (tlb_load_tag[vpn % TLB_ENTRIES] & ~TLB_CHECK_TRIGGERS)) {
+  if (!access_info.flags.is_special_access() && vpn == (tlb_load_tag[vpn % TLB_ENTRIES] & ~TLB_CHECK_TRIGGERS)) {
+    mem_event_log.paddrs.push_back(tlb_data[vpn % TLB_ENTRIES].target_offset + transformed_addr); /*ext: log paddr*/
     auto host_addr = tlb_data[vpn % TLB_ENTRIES].host_offset + transformed_addr;
     memcpy(bytes, host_addr, len);
     return;
   }
 
   reg_t paddr = translate(access_info, len);
+  mem_event_log.paddrs.push_back(paddr); /*ext: log paddr*/
 
   if (access_info.flags.lr && !sim->reservable(paddr)) {
     throw trap_load_access_fault(access_info.effective_virt, transformed_addr, 0, 0);
   }
 
   if (auto host_addr = sim->addr_to_mem(paddr)) {
-    if (BACKUP_ON) {
-      g_spike_hooker->load(addr, host_addr, len, bytes, sim);
-    } else {
     memcpy(bytes, host_addr, len);
     if (tracer.interested_in_range(paddr, paddr + PGSIZE, LOAD))
       tracer.trace(paddr, len, LOAD);
     else if (!access_info.flags.is_special_access())
       refill_tlb(addr, paddr, host_addr, LOAD);
-    }
 
   } else if (!mmio_load(paddr, len, bytes)) {
     throw trap_load_access_fault(access_info.effective_virt, transformed_addr, 0, 0);
@@ -280,7 +282,8 @@ void mmu_t::store_slow_path_intrapage(reg_t len, const uint8_t* bytes, mem_acces
   reg_t addr = access_info.vaddr;
   reg_t transformed_addr = access_info.transformed_vaddr;
   reg_t vpn = transformed_addr >> PGSHIFT;
-  if (not BACKUP_ON and !access_info.flags.is_special_access() && vpn == (tlb_store_tag[vpn % TLB_ENTRIES] & ~TLB_CHECK_TRIGGERS)) {
+  if (!access_info.flags.is_special_access() && vpn == (tlb_store_tag[vpn % TLB_ENTRIES] & ~TLB_CHECK_TRIGGERS)) {
+    mem_event_log.paddrs.push_back(tlb_data[vpn % TLB_ENTRIES].target_offset + transformed_addr); /*ext: log paddr*/
     if (actually_store) {
       auto host_addr = tlb_data[vpn % TLB_ENTRIES].host_offset + transformed_addr;
       memcpy(host_addr, bytes, len);
@@ -289,19 +292,15 @@ void mmu_t::store_slow_path_intrapage(reg_t len, const uint8_t* bytes, mem_acces
   }
 
   reg_t paddr = translate(access_info, len);
+  mem_event_log.paddrs.push_back(paddr); /*ext: log paddr*/
 
   if (actually_store) {
     if (auto host_addr = sim->addr_to_mem(paddr)) {
-      if (BACKUP_ON) {
-        g_spike_hooker->store(addr, host_addr, len, bytes, sim);
-        BACKUP_EXEC_ARG(setDummyStored, true);
-      } else {
       memcpy(host_addr, bytes, len);
       if (tracer.interested_in_range(paddr, paddr + PGSIZE, STORE))
         tracer.trace(paddr, len, STORE);
       else if (!access_info.flags.is_special_access())
         refill_tlb(addr, paddr, host_addr, STORE);
-      }
     } else if (!mmio_store(paddr, len, bytes)) {
       throw trap_store_access_fault(access_info.effective_virt, transformed_addr, 0, 0);
     }
@@ -689,3 +688,16 @@ mem_access_info_t mmu_t::generate_access_info(reg_t addr, access_type type, xlat
   }
   return {addr, transformed_addr, mode, virt, xlate_flags, type};
 }
+
+// code ext beg
+void mmu_t::handle_mem_event(char *buf, size_t len) {
+  if (not get_actually_ls()) {
+    if (mem_event_log.store) {
+      mem_event_ctrl_t(*proc).on_commit_store(mem_event_log.paddrs, buf, len);
+    } else {
+      mem_event_ctrl_t(*proc).on_commit_load(mem_event_log.paddrs, buf, len);
+    }
+  }
+  mem_event_log.paddrs.clear();
+}
+// code ext end

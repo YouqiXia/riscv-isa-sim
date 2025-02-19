@@ -21,6 +21,7 @@
 //// RiVAI: simpoint add --YC
 #include "simpoint_module.h"
 //// RiVAI: simpoint add end --YC
+#include "mem_units.h"
 // rivai end
 #define FIRST_HPMCOUNTER 3
 #define N_HPMCOUNTERS 29
@@ -483,9 +484,26 @@ public:
 
   void dummy_step(size_t n);
 
+  size_t get_step_count() const { return step_count; }
+  void reset_step_count() { step_count = 0; }
+
+  void set_deep_ctrl(bool val) { deep_ctrl = val; }
+  bool get_deep_ctrl() const { return deep_ctrl; }
+
 private:
   bool fast_log_commits = false;
   bool fast_log_mem = false;
+
+  std::unique_ptr<core_rob_t> rob;
+  std::unique_ptr<core_stb_t> stb;
+  mem_event_t mem_event_arg = mem_event_t(mem_event_t::NONE, mem_event_t::INVALID, false);
+  bool int_grnt;
+  bool deep_ctrl = false;
+
+  size_t step_count = 0;
+
+  friend class mem_event_ctrl_t;
+  friend class proc_event_ctrl_t;
 // code ext end
 };
 

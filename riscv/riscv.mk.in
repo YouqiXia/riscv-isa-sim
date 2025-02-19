@@ -54,6 +54,11 @@ riscv_install_hdrs = \
 	tools_module.h \
 	simpoint_module.h \
 	option_configure_ext.h \
+	mem_event_ctrl.h \
+	mem_units.h \
+	proc_event_ctrl.h \
+	sim_event_ctrl.h \
+	ext_log.h \
 
 riscv_precompiled_hdrs = \
 	insn_template.h \
@@ -90,6 +95,12 @@ riscv_srcs = \
 	sim_extension.cc \
 	simpoint_module.cc \
 	option_configure_ext.cc \
+	mem_event_ctrl.cc \
+	mem_units.cc \
+	proc_event_ctrl.cc \
+	sim_event_ctrl.cc \
+	ext_log.cc \
+	interactive_ext.cc \
 
 riscv_test_srcs = \
   check-opcode-overlap.t.cc \

@@ -22,6 +22,9 @@
 #include <stdexcept>
 #include <string>
 #include <algorithm>
+// code ext beg
+#include "proc_event_ctrl.h"
+// code ext end
 
 #ifdef __GNUC__
 # pragma GCC diagnostic ignored "-Wunused-variable"
@@ -670,7 +673,13 @@ reg_t processor_t::get_csr(int which, insn_t insn, bool write, bool peek)
   if (search != state.csrmap.end()) {
     if (!peek)
       search->second->verify_permissions(insn, write);
-    return search->second->read();
+    // code ext: get csr data from ctrl-event instead of csr.
+    reg_t csr_data = 0;
+    if (not proc_event_ctrl_t(*this).on_commit_csr(which, csr_data)) {
+      csr_data = search->second->read();
+    }
+    return csr_data;
+    // code ext end
   }
   // If we get here, the CSR doesn't exist.  Unimplemented CSRs always throw
   // illegal-instruction exceptions, not virtual-instruction exceptions.

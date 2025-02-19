@@ -41,8 +41,6 @@ using device_factory_sargs_t = std::pair<const device_factory_t*, std::vector<st
 // this class encapsulates the processors and memory in a RISC-V machine.
 class sim_t : public htif_t, public simif_t
 {
-  friend class SimExtension;
-  friend class tools_module_t;
 public:
   sim_t(const cfg_t *cfg, bool halted,
         std::vector<std::pair<reg_t, abstract_mem_t*>> mems,
@@ -226,6 +224,13 @@ public:
 public:
   void interactive_csr(const std::string& cmd, const std::vector<std::string>& args);
   void interactive_tint(const std::string& cmd, const std::vector<std::string>& args);
+  // interactive for cosim, to be integrated into interactive_extension
+  void interactive_mtint(const std::string& cmd, const std::vector<std::string>& args);
+  void interactive_mccosim_init(const std::string& cmd, const std::vector<std::string>& args);
+  void interactive_mccosim_initcore(const std::string& cmd, const std::vector<std::string>& args);
+  void interactive_mccosim_event(const std::string& cmd, const std::vector<std::string>& args);
+  void interactive_mccosim_gbl(const std::string& cmd, const std::vector<std::string>& args);
+  // end interactive for cosim
 
   void set_current_proc(size_t proc);
   struct {
@@ -293,6 +298,11 @@ private:
   std::unordered_map<size_t, size_t> hartid_to_idx_map;
   bool log_commits_enabled = false;
   bool is_fast_log_commits = false;
+
+  memunit_init_arg_t memunit_init_arg;
+
+  friend class sim_event_ctrl_t;
+  friend class tools_module_t;
   // code extension end
 };
 

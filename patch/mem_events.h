@@ -16,12 +16,12 @@
 #include <cstdio>
 #include <string>
 
-struct memunit_initcore : public eventbase_t {
-  uint64_t core_id;
+struct memunit_initcore_t : public eventbase_t {
+  uint32_t core_id;
 
   std::string serialization() const override {
-    char cmd[128];
-    snprintf(cmd, sizeof(cmd), "mcc_initcore %lu\n", core_id);
+    char cmd[32];
+    snprintf(cmd, sizeof(cmd), "mcc_initcore %u\n", core_id);
     return cmd;
   }
 };
@@ -33,12 +33,13 @@ struct memunit_init_arg_t : public eventbase_t {
 
   std::string serialization() const override {
     char cmd[128];
-    snprintf(cmd, sizeof(cmd), "mcc_init %lu %lu %lu\n", rob_num, stb_num,
+    snprintf(cmd, sizeof(cmd), "mcc_init %u %u %u\n", rob_num, stb_num,
              stb_data_byte);
     return cmd;
   }
 };
 
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
 struct insn_flag_t {
   uint64_t is_st : 1,
            is_ld : 1,
@@ -57,6 +58,19 @@ struct insn_flag_t {
       is_sc(0),
       is_csr(0),
       is_io(0) {}
+
+  insn_flag_t& operator=(uint64_t val) {
+    *(uint64_t *)this = val;
+    return *this;
+  }
+
+  bool operator==(uint64_t val) {
+    return *(uint64_t *)this == val;
+  }
+
+  uint64_t to_u64() const {
+    return *(uint64_t *)this;
+  }
 };
 
 struct state_flag_t {
@@ -69,7 +83,17 @@ struct state_flag_t {
     : is_prepare(0),
       is_commit(0),
       is_stmem(0) {}
+
+  state_flag_t& operator=(uint64_t val) {
+    *(uint64_t *)this = val;
+    return *this;
+  }
+
+  uint64_t to_u64() const {
+    return *(uint64_t *)this;
+  }
 };
+#pragma GCC diagnostic warning "-Wstrict-aliasing"
 
 struct mem_event_t : public eventbase_t {
   enum insn_type_t {
@@ -128,19 +152,21 @@ struct mem_event_t : public eventbase_t {
     case event_state_t::STMEM:
       state.is_stmem = 1;
       break;
+    default:
+      break;
     }
   }
 
-  void set_state(uint64_t val) { *(uint64_t *)&state = val; }
-  void set_insn_flag(uint64_t val) { *(uint64_t *)&insn = val; }
-  bool is_mem_insn() { return (*(uint64_t *)&insn != uint64_t(0)); }
-  uint64_t get_state() { return *(uint64_t *)&state; }
-  uint64_t get_insn_flag() { return *(uint64_t *)&insn; }
+  void set_state(uint64_t val) { state = val; }
+  void set_insn_flag(uint64_t val) { insn = val; }
+  bool is_mem_insn() { return not (insn == uint64_t(0)); }
+  uint64_t get_state() { return state.to_u64(); }
+  uint64_t get_insn_flag() { return insn.to_u64(); }
 
   std::string serialization() const override {
     char cmd[256];
-    snprintf(cmd, sizeof(cmd), "mcc_event %lu %lu %lx %lx %lx %lx %lu %lu %lx\n",
-             core_id, timestamp, *(uint64_t *)&state, *(uint64_t *)&insn, paddr,
+    snprintf(cmd, sizeof(cmd), "mcc_event %u %lu %lx %lx %lx %lx %u %u %lx\n",
+             core_id, timestamp, state.to_u64(), insn.to_u64(), paddr,
              data, len, rob_idx, union_arg.stb_idx);
     return cmd;
   }

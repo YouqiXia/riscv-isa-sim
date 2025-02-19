@@ -14,8 +14,11 @@
 #include "cfg.h"
 #include <stdlib.h>
 #include <vector>
+// code ext beg
 #include "spikeAdpterHooks.hpp"
 #include "spikehooker.h"
+#include "mem_event_ctrl.h"
+// code ext end
 
 // virtual memory configuration
 #define PGSHIFT 12
@@ -27,7 +30,7 @@ struct insn_fetch_t
 {
   insn_func_t func;
   insn_t insn;
-  reg_t pc_ppn = 0; /*code ext*/
+  reg_t pc_ppn = 0; /*code ext: record ppn for usage*/
 };
 
 struct icache_entry_t {
@@ -87,6 +90,7 @@ public:
   T ALWAYS_INLINE load(reg_t addr, xlate_flags_t xlate_flags = {}) {
     target_endian<T> res;
 // rivai beg
+    reset_mem_event_log(false);
     if (!continueHook()) {
       // log mem read info when no continue
       if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem()))) {
@@ -100,7 +104,8 @@ public:
     bool aligned = (addr & (sizeof(T) - 1)) == 0;
     bool tlb_hit = tlb_load_tag[vpn % TLB_ENTRIES] == vpn;
 
-    if (not BACKUP_ON and likely(!xlate_flags.is_special_access() && aligned && tlb_hit)) {
+    if (likely(!xlate_flags.is_special_access() && aligned && tlb_hit)) {
+      mem_event_log.paddrs.push_back(tlb_data[vpn % TLB_ENTRIES].target_offset + addr); /*ext: log paddr*/
       res = *(target_endian<T>*)(tlb_data[vpn % TLB_ENTRIES].host_offset + addr);
     } else {
       load_slow_path(addr, sizeof(T), (uint8_t*)&res, xlate_flags);
@@ -110,6 +115,7 @@ public:
       reg_t paddr = translate(generate_access_info(addr, LOAD, {}), sizeof(T));
       proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T), paddr));
     }
+    handle_mem_event((char*)&res, sizeof(T));
 // rivai end
     return from_target(res);
   }
@@ -140,16 +146,13 @@ public:
   template<typename T>
   void ALWAYS_INLINE store(reg_t addr, T val, xlate_flags_t xlate_flags = {}, bool skipExe = false/*rivai*/) {
 // rivai beg
+    reset_mem_event_log(true);
+    bool actually_store = get_actually_ls();
     if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem()))) {
       reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
       proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
     }
     if (!continueHook()) {
-      // log mem write info when no continue
-      // if (unlikely(proc && proc->get_log_commits_enabled())) {
-      //   reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
-      //   proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
-      // }
       return;
     }
     if (skipExe) {
@@ -157,7 +160,6 @@ public:
     }
 
     std::shared_ptr<bool> real_store = std::make_shared<bool>(false);
-    BACKUP_EXEC_ARG(setDummyStored, false);
     if (unlikely(proc && proc->get_log_commits_enabled())) {
       catchDataBeforeWriteHook(addr, val, sizeof(T), real_store);
     }
@@ -166,18 +168,22 @@ public:
     bool aligned = (addr & (sizeof(T) - 1)) == 0;
     bool tlb_hit = tlb_store_tag[vpn % TLB_ENTRIES] == vpn;
 
-    if (not BACKUP_ON and !xlate_flags.is_special_access() && likely(aligned && tlb_hit)) {
-      *(target_endian<T>*)(tlb_data[vpn % TLB_ENTRIES].host_offset + addr) = to_target(val);
+    if (!xlate_flags.is_special_access() && likely(aligned && tlb_hit)) {
+      mem_event_log.paddrs.push_back(tlb_data[vpn % TLB_ENTRIES].target_offset + addr); /*ext: log paddr*/
+      if (actually_store) /*code ext*/
+        *(target_endian<T>*)(tlb_data[vpn % TLB_ENTRIES].host_offset + addr) = to_target(val);
     } else {
       target_endian<T> target_val = to_target(val);
-      store_slow_path(addr, sizeof(T), (const uint8_t*)&target_val, xlate_flags, true, false);
+      store_slow_path(addr, sizeof(T), (const uint8_t*)&target_val, xlate_flags, actually_store/*code ext*/, false);
     }
 // rivai beg
-    if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem())) and not BACKUP_BOOL(getDummyStored)){
+    if (unlikely(proc && (proc->get_log_commits_enabled() or proc->is_fast_log_mem()))){
       // reg_t paddr = translate(generate_access_info(addr, STORE, {}), sizeof(T));
       // proc->state.log_mem_write.push_back(std::make_tuple(addr, val, sizeof(T), paddr));
       *real_store = true;
     }
+    auto target_val = to_target(val);
+    handle_mem_event((char*)&target_val, sizeof(T));
 // rivai end
   }
 
@@ -309,7 +315,12 @@ public:
 
     reg_t paddr = translate(generate_access_info(vaddr, STORE, {}), 1);
     if (sim->reservable(paddr))
+    { // code ext: control lr check with outside data
+      if (not get_actually_ls()) {
+        return mem_event_ctrl_t(*proc).on_commit_check_lr(paddr, size);
+      }
       return load_reservation_address == paddr;
+    } // code ext end
     else
       throw trap_store_access_fault((proc) ? proc->state.v : false, vaddr, 0, 0);
   }
@@ -564,6 +575,28 @@ public:
     throw std::runtime_error("ext_fetch_insn error");
     return insn_fetch_t();
   }
+
+  bool get_actually_ls() const { return not proc or not proc->get_deep_ctrl(); }
+
+private:
+  struct {
+    std::vector<uint64_t> paddrs;
+    bool store = false;
+
+    void reset() { paddrs.clear(); }
+  } mem_event_log;
+
+  void reset_mem_event_log(bool store) {
+    if (not get_actually_ls() and not mem_event_log.paddrs.empty()) {
+      std::cout << "mem_event_log not clear" << std::endl;
+    }
+    mem_event_log.reset();
+    mem_event_log.store = store;
+  }
+  
+  void handle_mem_event(char *buf, size_t len);
+
+  friend class mem_event_ctrl_t;
   // code ext end
 };
 

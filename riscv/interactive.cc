@@ -26,6 +26,7 @@
 
 // rivai beg
 #include "easy_args.h"
+#include "sim_event_ctrl.h"
 // rivai end
 
 #ifdef __GNUC__
@@ -295,8 +296,15 @@ void sim_t::interactive()
   funcs["q"] = funcs["quit"];
   funcs["help"] = &sim_t::interactive_help;
   funcs["h"] = funcs["help"];
+  // code ext beg
   funcs["csr"] = &sim_t::interactive_csr;
   funcs["tint"] = &sim_t::interactive_tint;
+  funcs["mtint"] = &sim_t::interactive_mtint;
+  funcs["mcc_init"] = &sim_t::interactive_mccosim_init;
+  funcs["mcc_initcore"] = &sim_t::interactive_mccosim_initcore;
+  funcs["mcc_event"] = &sim_t::interactive_mccosim_event;
+  funcs["mcc_gbl"] = &sim_t::interactive_mccosim_gbl;
+  // code ext end
 
   while (!done())
   {
@@ -957,7 +965,7 @@ void sim_t::interactive_csr(const std::string& cmd, const std::vector<std::strin
   auto csr_type = std::stoul(args[1]);
   // for now only support mcycle
   if (args.size() == 3) {
-    auto mcycle_val = std::strtoull(args[2].c_str(),NULL,16);;
+    auto mcycle_val = std::strtoull(args[2].c_str(),NULL,16);
     p->get_state()->mcycle->write(mcycle_val);
   }
   out << std::hex << std::setfill('0') << "0x" << std::setw(16)
@@ -968,7 +976,8 @@ void sim_t::interactive_tint(const std::string& cmd, const std::vector<std::stri
   if (args.size() != 1)
     throw trap_interactive();
 
-  processor_t *p = get_core(args[0]);
-  p->get_state()->mip->backdoor_write_with_mask(MIP_MTIP, MIP_MTIP);
+  tint_t int_arg;
+  int_arg.core_idx = std::strtoull(args[0].c_str(),NULL,10);
+  sim_event_ctrl_t(*this).set_tint(int_arg);
 }
 // code ext end

@@ -17,28 +17,26 @@
 #include <cstdio>
 #include <string>
 
-// for multi-core
-struct tint_arg_t : public eventbase_t {
-  uint32_t core_id;
-  uint64_t timestamp; // debug only
-  bool is_timer;
-  bool set_ip;
-  bool clr_ip;
+struct tint_t : public eventbase_t {
+  uint32_t core_idx{0};
 
   std::string serialization() const override {
-    char cmd[128] = {0};
-    snprintf(cmd, sizeof(cmd), "tint %lu %lu %lu %lu %lu\n", core_id, timestamp,
-             is_timer, set_ip, clr_ip);
+    char cmd[32] = {0};
+    snprintf(cmd, sizeof(cmd), "tint %u\n", core_idx);
     return cmd;
   }
 };
 
-struct tint_t : public eventbase_t {
-  uint32_t core_idx = 0;
+struct mtint_t : public eventbase_t {
+  uint32_t core_id{0};
+  bool is_timer{true};
+  bool clr_ip{false};
+  bool int_grnt{false};
+  uint64_t timestamp{0}; // debug only
 
   std::string serialization() const override {
-    char cmd[64] = {0};
-    snprintf(cmd, sizeof(cmd), "tint %u\n", core_idx);
+    char cmd[256] = {0};
+    snprintf(cmd, sizeof(cmd), "mtint %u %u %u %u %lu\n", core_id, is_timer, clr_ip, int_grnt, timestamp);
     return cmd;
   }
 };
@@ -58,7 +56,7 @@ struct mtime_access_t : public eventbase_t {
   std::string serialization() const override {
     char cmd[64] = {0};
     if (is_set) {
-      snprintf(cmd, sizeof(cmd), "mtime %016llx\n", mtime);
+      snprintf(cmd, sizeof(cmd), "mtime %016lx\n", mtime);
     } else {
       snprintf(cmd, sizeof(cmd), "mtime\n");
     }
@@ -79,7 +77,7 @@ struct csr_access_t : public eventbase_t {
   std::string serialization() const override {
     char cmd[64] = {0};
     if (is_set) {
-      snprintf(cmd, sizeof(cmd), "csr %u %u %016llx\n", core_idx, type, val);
+      snprintf(cmd, sizeof(cmd), "csr %u %u %016lx\n", core_idx, type, val);
     } else {
       snprintf(cmd, sizeof(cmd), "csr %u %u\n", core_idx, type);
     }
