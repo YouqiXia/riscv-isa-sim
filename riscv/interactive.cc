@@ -968,7 +968,7 @@ void sim_t::interactive_csr(const std::string& cmd, const std::vector<std::strin
     auto mcycle_val = std::strtoull(args[2].c_str(),NULL,16);
     p->get_state()->mcycle->write(mcycle_val);
   }
-  out << std::hex << std::setfill('0') << "0x" << std::setw(16)
+  out << "mcycle: " << std::hex << std::setfill('0') << "0x" << std::setw(16)
       << p->get_state()->mcycle->read() << std::endl;
 }
 
