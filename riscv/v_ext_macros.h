@@ -287,8 +287,8 @@ static inline bool is_overlapped_widen(const int astart, int asize,
     res = (res & ~mmask) | ((op) & (1ULL << mpos)); \
   } \
   /*code ext: implement tail-agnostic*/ \
-  if (g_easy_args.vmaskone) { \
-    for (reg_t i = vl; i < MAX(P.VU.vlmax * P.VU.vsew, P.VU.VLEN); ++i) { \
+  if (P.VU.vta) { \
+    for (reg_t i = vl; i < (P.VU.vstart->read() + P.VU.VLEN); ++i) { \
       int midx = i / 64; \
       int mpos = i % 64; \
       uint64_t &res = P.VU.elt<uint64_t>(insn.rd(), midx, true); \

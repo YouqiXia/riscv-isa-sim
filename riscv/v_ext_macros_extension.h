@@ -26,7 +26,7 @@
     break; \
   }
 
-#define V_COMMON(BODY) \
+#define VEC_COMMON(BODY) \
   if (sew == e8) { \
     BODY(e8); \
     V_FILL_ONE \
@@ -41,7 +41,7 @@
     V_FILL_ONE \
   }
 
-#define V_NARROW(BODY) \
+#define VEC_NARROW(BODY) \
   if (sew == e8) { \
     BODY(e8, e16); \
     V_FILL_ONE \
@@ -53,7 +53,7 @@
     V_FILL_ONE \
   }
 
-#define V_WIDEN(BODY) \
+#define VEC_WIDEN(BODY) \
   if (sew == e8) { \
     BODY(e8); \
     V_FILL_ONE \
@@ -65,7 +65,7 @@
     V_FILL_ONE \
   }
 
-#define V_VF_MERGE(BODY) \
+#define VEC_VF_MERGE(BODY) \
   if (P.VU.vsew == e16) { \
     BODY(16); \
     VF_FILL_ONE \
@@ -108,7 +108,7 @@
 
 #define V_HANDLE_TAIL(BODY1, BODY2) \
   if (P.VU.vta) { \
-    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.ELEN); ++i) { \
+    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.vsew); ++i) { \
       BODY1(BODY2) \
     } \
   } \
@@ -118,7 +118,7 @@
   if (P.VU.vta) { \
     auto rd_num = insn.rd(); \
     auto sew = P.VU.vsew; \
-    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.ELEN); ++i) { \
+    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.vsew); ++i) { \
       BODY1(BODY2) \
     } \
   }
@@ -128,7 +128,7 @@
 #undef VI_VV_ULOOP
 #define VI_VV_ULOOP(BODY) \
   VI_CHECK_SSS(true) \
-  SE_VI_LOOP_BASE(V_COMMON, VV_U_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VV_U_PARAMS) \
   if (sew == e8) { \
     VV_U_PARAMS(e8); \
     BODY; \
@@ -143,14 +143,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VV_U_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VV_U_PARAMS)
 #endif
 
 #ifdef VI_VV_LOOP
 #undef VI_VV_LOOP
 #define VI_VV_LOOP(BODY) \
   VI_CHECK_SSS(true) \
-  SE_VI_LOOP_BASE(V_COMMON, VV_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VV_PARAMS) \
   if (sew == e8) { \
     VV_PARAMS(e8); \
     BODY; \
@@ -165,14 +165,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VV_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VV_PARAMS)
 #endif
 
 #ifdef VI_V_ULOOP
 #undef VI_V_ULOOP
 #define VI_V_ULOOP(BODY) \
   VI_CHECK_SSS(false) \
-  SE_VI_LOOP_BASE(V_COMMON, V_U_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, V_U_PARAMS) \
   if (sew == e8) { \
     V_U_PARAMS(e8); \
     BODY; \
@@ -187,14 +187,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, V_U_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, V_U_PARAMS)
 #endif
 
 #ifdef VI_VX_ULOOP
 #undef VI_VX_ULOOP
 #define VI_VX_ULOOP(BODY) \
   VI_CHECK_SSS(false) \
-  SE_VI_LOOP_BASE(V_COMMON, VX_U_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VX_U_PARAMS) \
   if (sew == e8) { \
     VX_U_PARAMS(e8); \
     BODY; \
@@ -209,14 +209,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VX_U_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VX_U_PARAMS)
 #endif
 
 #ifdef VI_VX_LOOP
 #undef VI_VX_LOOP
 #define VI_VX_LOOP(BODY) \
   VI_CHECK_SSS(false) \
-  SE_VI_LOOP_BASE(V_COMMON, VX_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VX_PARAMS) \
   if (sew == e8) { \
     VX_PARAMS(e8); \
     BODY; \
@@ -231,14 +231,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VX_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VX_PARAMS)
 #endif
 
 #ifdef VI_VI_ULOOP
 #undef VI_VI_ULOOP
 #define VI_VI_ULOOP(BODY) \
   VI_CHECK_SSS(false) \
-  SE_VI_LOOP_BASE(V_COMMON, VI_U_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VI_U_PARAMS) \
   if (sew == e8) { \
     VI_U_PARAMS(e8); \
     BODY; \
@@ -253,14 +253,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VI_U_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VI_U_PARAMS)
 #endif
 
 #ifdef VI_VI_LOOP
 #undef VI_VI_LOOP
 #define VI_VI_LOOP(BODY) \
   VI_CHECK_SSS(false) \
-  SE_VI_LOOP_BASE(V_COMMON, VI_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VI_PARAMS) \
   if (sew == e8) { \
     VI_PARAMS(e8); \
     BODY; \
@@ -275,7 +275,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VI_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VI_PARAMS)
 #endif
 
 // signed unsigned operation loop (e.g. mulhsu)
@@ -283,7 +283,7 @@
 #undef VI_VV_SU_LOOP
 #define VI_VV_SU_LOOP(BODY) \
   VI_CHECK_SSS(true) \
-  SE_VI_LOOP_BASE(V_COMMON, VV_SU_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VV_SU_PARAMS) \
   if (sew == e8) { \
     VV_SU_PARAMS(e8); \
     BODY; \
@@ -298,14 +298,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VV_SU_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VV_SU_PARAMS)
 #endif
 
 #ifdef VI_VX_SU_LOOP
 #undef VI_VX_SU_LOOP
 #define VI_VX_SU_LOOP(BODY) \
   VI_CHECK_SSS(false) \
-  SE_VI_LOOP_BASE(V_COMMON, VX_SU_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_COMMON, VX_SU_PARAMS) \
   if (sew == e8) { \
     VX_SU_PARAMS(e8); \
     BODY; \
@@ -320,7 +320,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VX_SU_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VX_SU_PARAMS)
 #endif
 
 // narrow operation loop
@@ -328,7 +328,7 @@
 #undef VI_VV_LOOP_NARROW
 #define VI_VV_LOOP_NARROW(BODY) \
   VI_CHECK_SDS(true); \
-  SE_VI_LOOP_BASE(V_NARROW, VV_NARROW_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_NARROW, VV_NARROW_PARAMS) \
   if (sew == e8) { \
     VV_NARROW_PARAMS(e8, e16) \
     BODY; \
@@ -340,14 +340,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_NARROW, VV_NARROW_PARAMS)
+  V_HANDLE_TAIL(VEC_NARROW, VV_NARROW_PARAMS)
 #endif
 
 #ifdef VI_VX_LOOP_NARROW
 #undef VI_VX_LOOP_NARROW
 #define VI_VX_LOOP_NARROW(BODY) \
   VI_CHECK_SDS(false); \
-  SE_VI_LOOP_BASE(V_NARROW, VX_NARROW_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_NARROW, VX_NARROW_PARAMS) \
   if (sew == e8) { \
     VX_NARROW_PARAMS(e8, e16) \
     BODY; \
@@ -359,14 +359,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_NARROW, VX_NARROW_PARAMS)
+  V_HANDLE_TAIL(VEC_NARROW, VX_NARROW_PARAMS)
 #endif
 
 #ifdef VI_VI_LOOP_NARROW
 #undef VI_VI_LOOP_NARROW
 #define VI_VI_LOOP_NARROW(BODY) \
   VI_CHECK_SDS(false); \
-  SE_VI_LOOP_BASE(V_NARROW, VI_NARROW_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_NARROW, VI_NARROW_PARAMS) \
   if (sew == e8) { \
     VI_NARROW_PARAMS(e8, e16) \
     BODY; \
@@ -378,14 +378,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_NARROW, VI_NARROW_PARAMS)
+  V_HANDLE_TAIL(VEC_NARROW, VI_NARROW_PARAMS)
 #endif
 
 #ifdef VI_VI_LOOP_NSHIFT
 #undef VI_VI_LOOP_NSHIFT
 #define VI_VI_LOOP_NSHIFT(BODY) \
   VI_CHECK_SDS(false); \
-  SE_VI_LOOP_NSHIFT_BASE(V_NARROW, VI_NARROW_PARAMS) \
+  SE_VI_LOOP_NSHIFT_BASE(VEC_NARROW, VI_NARROW_PARAMS) \
   if (sew == e8) { \
     VI_NARROW_PARAMS(e8, e16) \
     BODY; \
@@ -397,14 +397,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_NARROW, VI_NARROW_PARAMS)
+  V_HANDLE_TAIL(VEC_NARROW, VI_NARROW_PARAMS)
 #endif
 
 #ifdef VI_VX_LOOP_NSHIFT
 #undef VI_VX_LOOP_NSHIFT
 #define VI_VX_LOOP_NSHIFT(BODY) \
   VI_CHECK_SDS(false); \
-  SE_VI_LOOP_NSHIFT_BASE(V_NARROW, VX_NARROW_PARAMS) \
+  SE_VI_LOOP_NSHIFT_BASE(VEC_NARROW, VX_NARROW_PARAMS) \
   if (sew == e8) { \
     VX_NARROW_PARAMS(e8, e16) \
     BODY; \
@@ -416,14 +416,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_NARROW, VX_NARROW_PARAMS)
+  V_HANDLE_TAIL(VEC_NARROW, VX_NARROW_PARAMS)
 #endif
 
 #ifdef VI_VV_LOOP_NSHIFT
 #undef VI_VV_LOOP_NSHIFT
 #define VI_VV_LOOP_NSHIFT(BODY) \
   VI_CHECK_SDS(true); \
-  SE_VI_LOOP_NSHIFT_BASE(V_NARROW, VV_NARROW_PARAMS) \
+  SE_VI_LOOP_NSHIFT_BASE(VEC_NARROW, VV_NARROW_PARAMS) \
   if (sew == e8) { \
     VV_NARROW_PARAMS(e8, e16) \
     BODY; \
@@ -435,14 +435,14 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_NARROW, VV_NARROW_PARAMS)
+  V_HANDLE_TAIL(VEC_NARROW, VV_NARROW_PARAMS)
 #endif
 
 // widen operation loop
 #ifdef VI_VV_LOOP_WIDEN
 #undef VI_VV_LOOP_WIDEN
 #define VI_VV_LOOP_WIDEN(BODY) \
-  SE_VI_LOOP_BASE(V_WIDEN, VV_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_WIDEN, VV_PARAMS) \
   if (sew == e8) { \
     VV_PARAMS(e8); \
     BODY; \
@@ -454,13 +454,13 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_WIDEN, VV_PARAMS)
+  V_HANDLE_TAIL(VEC_WIDEN, VV_PARAMS)
 #endif
 
 #ifdef VI_VX_LOOP_WIDEN
 #undef VI_VX_LOOP_WIDEN
 #define VI_VX_LOOP_WIDEN(BODY) \
-  SE_VI_LOOP_BASE(V_WIDEN, VX_PARAMS) \
+  SE_VI_LOOP_BASE(VEC_WIDEN, VX_PARAMS) \
   if (sew == e8) { \
     VX_PARAMS(e8); \
     BODY; \
@@ -472,7 +472,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_WIDEN, VX_PARAMS)
+  V_HANDLE_TAIL(VEC_WIDEN, VX_PARAMS)
 #endif
 
 #ifdef VI_VV_MERGE_LOOP
@@ -494,7 +494,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VV_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VV_PARAMS)
 #endif
 
 #ifdef VI_VX_MERGE_LOOP
@@ -516,7 +516,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VX_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VX_PARAMS)
 #endif
 
 #ifdef VI_VI_MERGE_LOOP
@@ -538,7 +538,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_COMMON, VI_PARAMS)
+  V_HANDLE_TAIL(VEC_COMMON, VI_PARAMS)
 #endif
 
 #ifdef VI_VF_MERGE_LOOP
@@ -559,7 +559,7 @@
     BODY; \
   } \
   SE_VI_LOOP_END \
-  V_HANDLE_TAIL(V_VF_MERGE, VFP_VF_PARAMS)
+  V_HANDLE_TAIL(VEC_VF_MERGE, VFP_VF_PARAMS)
 #endif
 
 #define ELEMENT_SKIP ((insn.v_vm() == 0) && (((P.VU.elt<uint64_t>(0, i / 64) >> (i % 64)) & 0x1) == 0))

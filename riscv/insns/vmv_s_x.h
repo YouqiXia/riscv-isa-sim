@@ -26,6 +26,6 @@ if (vl > 0 && P.VU.vstart->read() < vl) {
   vl = 0;
 }
 // code ext: support tail policy mask one
-V_HANDLE_TAIL_SPECIAL(V_COMMON, EXT_GET_VD)
+V_HANDLE_TAIL_SPECIAL(VEC_COMMON, EXT_GET_VD)
 // code ext end
 P.VU.vstart->write(0);
