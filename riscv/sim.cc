@@ -82,7 +82,6 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 // rivai end
     debug_module(this, dm_config)
 {
-  is_halted = halted; /*code ext*/
   signal(SIGINT, &handle_signal);
 
   sout_.rdbuf(std::cerr.rdbuf()); // debug output goes to stderr by default
@@ -135,7 +134,6 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
       harts[cfg->hartids[i]] = procs[i];
       hartid_to_idx_map[cfg->hartids[i]] = i; /*code ext: record hartid*/
     }
-    isa_string = cfg->isa;/*code ext: record isa for usage*/
     std::cout << "Final cores count: " << procs.size() << std::endl; // code ext: print final cores count
     return;
   } // otherwise, generate the procs by parsing the DTS
@@ -238,9 +236,8 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
                                     cfg, this, hartid, halted,
                                     log_file.get(), sout_));
     harts[hartid] = procs[cpu_idx];
-    // code ext : record hartid and isa.
+    // code ext : record hartid.
     hartid_to_idx_map[hartid] = cpu_idx;
-    isa_string = isa_str;
     // code ext end
 
     // handle pmp

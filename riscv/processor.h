@@ -482,8 +482,6 @@ public:
   void set_fast_log_mem(bool val) { fast_log_mem = val; }
   bool is_fast_log_mem() const { return fast_log_mem and fast_log_commits; }
 
-  void dummy_step(size_t n);
-
   size_t get_step_count() const { return step_count; }
   void reset_step_count() { step_count = 0; }
 
