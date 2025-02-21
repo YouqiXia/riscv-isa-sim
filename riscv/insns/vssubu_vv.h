@@ -1,6 +1,6 @@
 // vssubu.vv vd, vs2, vs1
 VI_CHECK_SSS(true);
-VI_LOOP_BASE
+SE_VI_LOOP_BASE(VEC_COMMON, VV_U_PARAMS) /*code ext*/
 bool sat = false;
 
 switch (sew) {
@@ -27,4 +27,5 @@ default: {
 }
 P_SET_OV(sat);
 
-VI_LOOP_END
+SE_VI_LOOP_END /*code ext*/
+V_HANDLE_TAIL(VEC_COMMON, VV_U_PARAMS) /*code ext*/
