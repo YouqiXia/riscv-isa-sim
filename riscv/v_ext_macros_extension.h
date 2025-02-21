@@ -562,6 +562,102 @@
   V_HANDLE_TAIL(VEC_VF_MERGE, VFP_VF_PARAMS)
 #endif
 
+#define SE_VI_LOOP_CARRY_END \
+    vd = (vd & ~mmask) | (((res) << mpos) & mmask); \
+  }
+
+#define SE_GET_VD(x) \
+  auto &vd = (*p).VU.elt<type_sew_t<x>::type>(rd_num, i, true);
+
+// carry/borrow bit loop
+#ifdef VI_VV_LOOP_CARRY
+#undef VI_VV_LOOP_CARRY
+#define VI_VV_LOOP_CARRY(BODY) \
+  VI_CHECK_MSS(true); \
+  VI_LOOP_CARRY_BASE \
+    if (sew == e8) { \
+      VV_CARRY_PARAMS(e8) \
+      BODY; \
+    } else if (sew == e16) { \
+      VV_CARRY_PARAMS(e16) \
+      BODY; \
+    } else if (sew == e32) { \
+      VV_CARRY_PARAMS(e32) \
+      BODY; \
+    } else if (sew == e64) { \
+      VV_CARRY_PARAMS(e64) \
+      BODY; \
+    } \
+  SE_VI_LOOP_CARRY_END \
+  V_HANDLE_TAIL(VEC_COMMON, SE_GET_VD)
+#endif
+
+#ifdef VI_XI_LOOP_CARRY
+#undef VI_XI_LOOP_CARRY
+#define VI_XI_LOOP_CARRY(BODY) \
+  VI_CHECK_MSS(false); \
+  VI_LOOP_CARRY_BASE \
+    if (sew == e8) { \
+      XI_CARRY_PARAMS(e8) \
+      BODY; \
+    } else if (sew == e16) { \
+      XI_CARRY_PARAMS(e16) \
+      BODY; \
+    } else if (sew == e32) { \
+      XI_CARRY_PARAMS(e32) \
+      BODY; \
+    } else if (sew == e64) { \
+      XI_CARRY_PARAMS(e64) \
+      BODY; \
+    } \
+  SE_VI_LOOP_CARRY_END \
+  V_HANDLE_TAIL(VEC_COMMON, SE_GET_VD)
+#endif
+
+#ifdef VI_VV_LOOP_WITH_CARRY
+#undef VI_VV_LOOP_WITH_CARRY
+#define VI_VV_LOOP_WITH_CARRY(BODY) \
+  VI_CHECK_SSS(true); \
+  VI_LOOP_WITH_CARRY_BASE \
+    if (sew == e8) { \
+      VV_WITH_CARRY_PARAMS(e8) \
+      BODY; \
+    } else if (sew == e16) { \
+      VV_WITH_CARRY_PARAMS(e16) \
+      BODY; \
+    } else if (sew == e32) { \
+      VV_WITH_CARRY_PARAMS(e32) \
+      BODY; \
+    } else if (sew == e64) { \
+      VV_WITH_CARRY_PARAMS(e64) \
+      BODY; \
+    } \
+  SE_VI_LOOP_END \
+  V_HANDLE_TAIL(VEC_COMMON, SE_GET_VD)
+#endif
+
+#ifdef VI_XI_LOOP_WITH_CARRY
+#undef VI_XI_LOOP_WITH_CARRY
+#define VI_XI_LOOP_WITH_CARRY(BODY) \
+  VI_CHECK_SSS(false); \
+  VI_LOOP_WITH_CARRY_BASE \
+    if (sew == e8) { \
+      XI_WITH_CARRY_PARAMS(e8) \
+      BODY; \
+    } else if (sew == e16) { \
+      XI_WITH_CARRY_PARAMS(e16) \
+      BODY; \
+    } else if (sew == e32) { \
+      XI_WITH_CARRY_PARAMS(e32) \
+      BODY; \
+    } else if (sew == e64) { \
+      XI_WITH_CARRY_PARAMS(e64) \
+      BODY; \
+    } \
+  SE_VI_LOOP_END \
+  V_HANDLE_TAIL(VEC_COMMON, SE_GET_VD)
+#endif
+
 #define ELEMENT_SKIP ((insn.v_vm() == 0) && (((P.VU.elt<uint64_t>(0, i / 64) >> (i % 64)) & 0x1) == 0))
 
 #ifdef VI_LD
