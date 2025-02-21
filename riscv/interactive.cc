@@ -962,7 +962,6 @@ void sim_t::interactive_csr(const std::string& cmd, const std::vector<std::strin
   processor_t *p = get_core(args[0]);
   std::ostream out(sout_.rdbuf());
 
-  auto csr_type = std::stoul(args[1]);
   // for now only support mcycle
   if (args.size() == 3) {
     auto mcycle_val = std::strtoull(args[2].c_str(),NULL,16);

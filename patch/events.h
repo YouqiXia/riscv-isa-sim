@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <unordered_map>
 
 struct tint_t : public eventbase_t {
   uint32_t core_idx{0};
@@ -75,11 +76,15 @@ struct csr_access_t : public eventbase_t {
   bool is_set = false;
 
   std::string serialization() const override {
+    static const std::unordered_map<type_t, const char *> type_to_name = {
+      {MCYCLE, "mcycle"}
+    };
+
     char cmd[64] = {0};
     if (is_set) {
-      snprintf(cmd, sizeof(cmd), "csr %u %u %016lx\n", core_idx, type, val);
+      snprintf(cmd, sizeof(cmd), "csr %u %s %016lx\n", core_idx, type_to_name.at(type), val);
     } else {
-      snprintf(cmd, sizeof(cmd), "csr %u %u\n", core_idx, type);
+      snprintf(cmd, sizeof(cmd), "csr %u %s\n", core_idx, type_to_name.at(type));
     }
     return cmd;
   }
