@@ -117,6 +117,7 @@
 #define V_HANDLE_TAIL_SPECIAL(BODY1, BODY2) \
   if (P.VU.vta) { \
     auto rd_num = insn.rd(); \
+    reg_t vl = P.VU.vl->read(); \
     auto sew = P.VU.vsew; \
     for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.vsew); ++i) { \
       BODY1(BODY2) \
