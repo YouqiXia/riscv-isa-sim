@@ -108,6 +108,7 @@
 
 #define V_HANDLE_TAIL(BODY1, BODY2) \
   if (P.VU.vta) { \
+    reg_t vl = P.VU.vl->read(); \
     for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.vsew); ++i) { \
       BODY1(BODY2) \
     } \
