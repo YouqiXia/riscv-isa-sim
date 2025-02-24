@@ -115,13 +115,15 @@
   } \
   P.VU.vstart->write(0);
 
-#define V_HANDLE_TAIL_SPECIAL(BODY1, BODY2) \
+#define V_HANDLE_TAIL_VMV_S_X(BODY1, BODY2) \
   if (P.VU.vta) { \
     auto rd_num = insn.rd(); \
     reg_t vl = P.VU.vl->read(); \
     auto sew = P.VU.vsew; \
-    for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.vsew); ++i) { \
-      BODY1(BODY2) \
+    if (vl > 0 && P.VU.vstart->read() < vl) { \
+      for (reg_t i = 1; i < P.VU.VLEN / P.VU.vsew; ++i) { \
+        BODY1(BODY2) \
+      } \
     } \
   }
 
