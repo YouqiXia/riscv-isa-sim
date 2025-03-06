@@ -78,7 +78,7 @@
   }
 
 #define V_HANDLE_MASK(BODY1, BODY2) \
-  if (P.VU.vma) { \
+  if (P.VU.vma && g_easy_args.vmaskone) { \
     BODY1(BODY2); \
   }
 
@@ -107,7 +107,7 @@
   VI_LOOP_END_BASE
 
 #define V_HANDLE_TAIL(BODY1, BODY2) \
-  if (P.VU.vta) { \
+  if (P.VU.vta && g_easy_args.vmaskone) { \
     reg_t vl = P.VU.vl->read(); \
     for (reg_t i = vl; i < MAX(P.VU.vlmax, P.VU.VLEN / P.VU.vsew); ++i) { \
       BODY1(BODY2) \
@@ -116,7 +116,7 @@
   P.VU.vstart->write(0);
 
 #define V_HANDLE_TAIL_VMV_S_X(BODY1, BODY2) \
-  if (P.VU.vta) { \
+  if (P.VU.vta && g_easy_args.vmaskone) { \
     auto rd_num = insn.rd(); \
     reg_t vl = P.VU.vl->read(); \
     auto sew = P.VU.vsew; \
