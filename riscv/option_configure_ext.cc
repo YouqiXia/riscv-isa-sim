@@ -12,4 +12,5 @@
 
 void option_configure_ext(option_parser_t &parser, cfg_t &cfg) {
   parser.option(0, "deepctrl", 1, [&](const char* s){cfg.deepctrl = strtoull(s, nullptr, 10);});
+  parser.option(0, "waddr", 1, [&](const char* s){cfg.watch_addr = strtoull(s, nullptr, 16);});
 }

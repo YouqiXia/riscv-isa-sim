@@ -82,6 +82,7 @@ public:
   bool                    disable_host = false; // code ext: whether communicate with host.
   bool                    explicit_nproc = false; // code ext: whether -p=<n> is given.
   mutable bool            deepctrl = false; //code ext: for spike deepctrl.
+  reg_t                   watch_addr{~reg_t(0)}; // code ext: Watch access behavior in watch_addr.
 
   size_t nprocs() const { return hartids.size(); }
   size_t max_hartid() const { return hartids.back(); }

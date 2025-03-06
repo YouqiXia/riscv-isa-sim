@@ -15,7 +15,8 @@
 #include "cfg.h"
 
 #define OPTION_HELP_PRINT \
-  fprintf(stderr, "  --deepctrl=<val>      Set if in deepctrl mode, val=0 or 1.\n");
+  fprintf(stderr, "  --deepctrl=<val>      Set if in deepctrl mode, val=0 or 1.\n"); \
+  fprintf(stderr, "  --waddr=<hexval>         Watch access behavior in <hexval> addr.\n");
 
 void option_configure_ext(option_parser_t &parser, cfg_t &cfg);
 

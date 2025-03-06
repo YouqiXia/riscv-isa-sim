@@ -116,6 +116,14 @@ public:
       proc->state.log_mem_read.push_back(std::make_tuple(addr, 0, sizeof(T), paddr));
     }
     handle_mem_event((char*)&res, sizeof(T));
+
+    /* Watch access in cfg.watch_addr. */
+    if (proc && proc->get_cfg().watch_addr >= addr && proc->get_cfg().watch_addr < addr + sizeof(T)) {
+      uint64_t bin;
+      memcpy(&bin, &res, std::min(sizeof(uint64_t), sizeof(T)));
+      printf("[WATCH] watch_addr 0x%lx is accessed by core%u, pc 0x%lx, addr 0x%lx, len %luB, data 0x%lx, R\n",
+              proc->get_cfg().watch_addr, proc->get_id(), proc->get_state()->pc, addr, sizeof(T), bin);
+    }
 // rivai end
     return from_target(res);
   }
@@ -184,6 +192,13 @@ public:
     }
     auto target_val = to_target(val);
     handle_mem_event((char*)&target_val, sizeof(T));
+    /* Watch access in cfg.watch_addr. */
+    if (proc && proc->get_cfg().watch_addr >= addr && proc->get_cfg().watch_addr < addr + sizeof(T)) {
+      uint64_t bin;
+      memcpy(&bin, &target_val, std::min(sizeof(uint64_t), sizeof(T)));
+      printf("[WATCH] watch_addr 0x%lx is accessed by core%u, pc 0x%lx, addr 0x%lx, len %luB, data 0x%lx, W\n",
+              proc->get_cfg().watch_addr, proc->get_id(), proc->get_state()->pc, addr, sizeof(T), bin);
+    }
 // rivai end
   }
 
