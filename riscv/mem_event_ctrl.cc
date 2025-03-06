@@ -165,11 +165,11 @@ void mem_event_ctrl_t::prepare_st(const mem_event_t &mem_event) {
 
   if (mem_event.insn.is_io) {
     // only write into rob in mmio
-    MCC_LOG("[MCC prepare_iost] time: %lu, core%d_rob%u, paddr: 0x%lx-0x%lx, "
-            "len: %lu, st_data: 0x%lx\n",
-            mem_event.timestamp, mem_event.core_id, mem_event.rob_idx,
-            rob_entry->paddr, rob_entry->paddr >> 6, rob_entry->len,
-            rob_entry->st_data);
+    // MCC_LOG("[MCC prepare_iost] time: %lu, core%d_rob%u, paddr: 0x%lx-0x%lx, "
+    //         "len: %lu, st_data: 0x%lx\n",
+    //         mem_event.timestamp, mem_event.core_id, mem_event.rob_idx,
+    //         rob_entry->paddr, rob_entry->paddr >> 6, rob_entry->len,
+    //         rob_entry->st_data);
     return;
   }
 

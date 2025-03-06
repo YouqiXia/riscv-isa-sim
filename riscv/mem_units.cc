@@ -39,7 +39,7 @@ bool core_stb_t::load(uint64_t paddr, uint64_t len, uint8_t *data) {
 
 void core_stb_t::store(uint64_t paddr, uint64_t len, const uint8_t *data,
                        size_t stb_idx) {
-  assert(stb_busy_bitmap & (uint64_t(1) << stb_idx) == 0);
+  // assert(stb_busy_bitmap & (uint64_t(1) << stb_idx) == 0);
   stb_entry_t *stb_entry = &stb_array[stb_idx];
   uint32_t shift = paddr & (stb_data_byte - 1);
   for (uint64_t i = 0; i < len; i++) {

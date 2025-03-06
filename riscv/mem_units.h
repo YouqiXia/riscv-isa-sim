@@ -75,8 +75,8 @@ struct core_rob_t {
 struct stb_entry_t {
   static constexpr size_t MAX_DATA_BYTE = 64;
 
-  uint64_t paddr;
-  uint64_t wmask;
+  uint64_t paddr{0};
+  uint64_t wmask{0};
   std::vector<uint8_t> data;
 
   stb_entry_t(uint32_t data_byte) : wmask(0), data(data_byte, 0) {
